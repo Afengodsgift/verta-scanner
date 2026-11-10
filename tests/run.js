@@ -35,10 +35,13 @@ const serve = make => new Promise(r => { const s = http.createServer(); s.listen
     await t('bad is Blind', () => { assert(b.state.key === 'blind' || b.state.key === 'friction', 'bad=' + b.score); assert(b.meta.confidence === 'low'); });
     await t('good tested 3 product pages from Shopify catalog', () => { assert.strictEqual(g.meta.pages.length, 3); assert.strictEqual(g.meta.platform, 'Shopify'); });
     await t('mid flags blocked assistants', () => { const c = m.layers[0].checks.find(x => x.id === 'd3'); assert(c.status !== 'pass' && /GPTBot|PerplexityBot/.test(c.evidence + '')); assert(/PerplexityBot/.test(c.evidence)); });
-    await t('bad detects robots block, noindex, quote wall', () => { const d = id => b.layers.flatMap(l => l.checks).find(x => x.id === id); assert.strictEqual(d('d2').status, 'fail'); assert.strictEqual(d('d7').status, 'fail'); });
+    await t('bad detects robots block and empty shell', () => { const d = id => b.layers.flatMap(l => l.checks).find(x => x.id === id); assert.strictEqual(d('d2').status, 'fail'); assert.strictEqual(d('d8').status, 'fail'); });
     await t('every failing check has fix + evidence', () => { for (const r of [g, m, b]) for (const l of r.layers) for (const c of l.checks) if (c.status === 'fail' || c.status === 'warn') { assert(c.fix && c.evidence, c.id); assert(c.pts <= c.max); } });
     await t('top list references real checks', () => { for (const r of [m, b]) { const ids = r.layers.flatMap(l => l.checks).map(c => c.id); r.top.forEach(i => assert(ids.includes(i))); assert(r.top.length > 0); } });
     await t('report is JSON-serializable and small', () => { assert(JSON.stringify(g).length < 60000); });
   }
+  { const { s, host } = await serve(fx.shellStore);
+    await t('empty/blocked homepage is flagged, capped, and not over-penalised', async () => { const r = await scan('http://' + host); assert(r.meta.unreadable); assert(r.score <= 39); assert.strictEqual(r.meta.confidence, 'low'); const all = r.layers.flatMap(l => l.checks); assert(all.find(c => c.id === 'd8').status === 'fail'); assert(all.find(c => c.id === 'po1').status === 'na'); assert(r.notes === undefined && r.meta.notes[0].includes('empty or blocked')); });
+    s.close(); }
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
 })();

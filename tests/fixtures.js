@@ -48,4 +48,9 @@ function bad(host) {
     send('text/plain', 'nf', 404);
   };
 }
-module.exports = { good, mid, bad };
+function shellStore(host) {
+  return (req, res) => { const send = (t, b, c = 200) => { res.writeHead(c, { 'content-type': t }); res.end(b); };
+    if (req.url.split('?')[0] === '/robots.txt') return send('text/plain', 'User-agent: *\nAllow: /');
+    send('text/html', '<html><body>Click the button below to continue shopping<button>Continue</button></body></html>'); };
+}
+module.exports = { good, mid, bad, shellStore };
