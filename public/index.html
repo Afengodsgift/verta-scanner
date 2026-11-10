@@ -47,7 +47,7 @@ footer{margin-top:36px;color:var(--mut);font-size:.82rem}
 <script>
 const $=s=>document.querySelector(s), out=$('#out');
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const COL={ready:'var(--ready)',compatible:'var(--compat)',friction:'var(--fric)',blind:'var(--blind)'};
+const COL={ready:'var(--ready)',compatible:'var(--compat)',friction:'var(--fric)',blind:'var(--blind)',inconclusive:'var(--mut)'};
 const colFor=n=>n>=80?COL.ready:n>=60?COL.compatible:n>=40?COL.friction:COL.blind;
 let current=null;
 
