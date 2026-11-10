@@ -53,4 +53,37 @@ function shellStore(host) {
     if (req.url.split('?')[0] === '/robots.txt') return send('text/plain', 'User-agent: *\nAllow: /');
     send('text/html', '<html><body>Click the button below to continue shopping<button>Continue</button></body></html>'); };
 }
-module.exports = { good, mid, bad, shellStore };
+
+// WooCommerce store: Yoast-style schema graph, /refund_returns/ and /shipping-policy/ pages that are NOT linked from the footer, wp-sitemap, Store API.
+function woo(host, opts = {}) {
+  const prod = slug => `<!doctype html><html><head><title>${slug} - Mama Titi Shop</title><meta name="description" content="Handmade ${slug} from Lagos, made to order."><link rel="canonical" href="http://${host}/product/${slug}/">
+<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': [{ '@type': 'Product', name: slug, description: 'Handmade ' + slug + ' from Lagos, made to order in two days.', sku: 'MT-' + slug, image: 'http://' + host + '/i/' + slug + '.jpg', offers: [{ '@type': 'Offer', price: '12000.00', priceCurrency: 'NGN', availability: 'http://schema.org/InStock', url: 'http://' + host + '/product/' + slug + '/' }] }, { '@type': 'BreadcrumbList', itemListElement: [] }] })}</script></head>
+<body class="woocommerce single-product"><nav class="woocommerce-breadcrumb"><a href="/">Home</a></nav><h1 class="product_title entry-title">${slug}</h1>
+<p class="price"><span class="woocommerce-Price-amount amount"><bdi><span class="woocommerce-Price-currencySymbol">₦</span>12,000.00</bdi></span></p>
+<div class="woocommerce-product-details__short-description"><p>Handmade ${slug} from Lagos, made to order in two days. ${'Quality fabric and careful stitching. '.repeat(10)}</p></div>
+<form class="cart" action="http://${host}/product/${slug}/" method="post"><button type="submit" name="add-to-cart" value="12" class="single_add_to_cart_button button alt">Add to cart</button></form>
+<table class="woocommerce-product-attributes shop_attributes"><tr><th>Weight</th><td>0.4 kg</td></tr><tr><th>Size</th><td>M</td></tr><tr><th>Material</th><td>Cotton</td></tr></table>
+<img src="/i/${slug}.jpg" alt="${slug} front view"><div class="related products"><h2>Related products</h2></div></body></html>`;
+  return (req, res) => {
+    const u = req.url.split('?')[0], send = (t, b, c = 200) => { res.writeHead(c, { 'content-type': t }); res.end(b); };
+    if (u === '/') return send('text/html', `<html><head><title>Mama Titi Shop</title><link rel="canonical" href="http://${host}/"><meta name="description" content="Handmade clothes from Lagos"><link rel="stylesheet" href="/wp-content/plugins/woocommerce/assets/css/woocommerce.css"></head><body class="home woocommerce-page"><h1>Mama Titi Shop</h1><ul class="products"><li class="product"><a class="woocommerce-LoopProduct-link" href="/product/ankara-dress/">Ankara dress</a></li><li class="product"><a class="woocommerce-LoopProduct-link" href="/product/aso-oke-cap/">Aso oke cap</a></li></ul>${'Handmade clothing made in Lagos. '.repeat(25)}<footer>We accept Paystack and bank transfer.</footer></body></html>`);
+    if (u === '/robots.txt') return send('text/plain', 'User-agent: *\nDisallow: /wp-admin/\nAllow: /wp-admin/admin-ajax.php');
+    if (u === '/wp-sitemap.xml') return send('application/xml', `<sitemapindex><sitemap><loc>http://${host}/wp-sitemap-posts-product-1.xml</loc></sitemap></sitemapindex>`);
+    if (u === '/wp-sitemap-posts-product-1.xml') return send('application/xml', `<urlset><url><loc>http://${host}/product/ankara-dress/</loc></url><url><loc>http://${host}/product/aso-oke-cap/</loc></url></urlset>`);
+    if (u === '/wp-json/wc/store/v1/products' && !opts.noApi) return send('application/json', JSON.stringify([{ permalink: `http://${host}/product/ankara-dress/`, is_in_stock: true }, { permalink: `http://${host}/product/aso-oke-cap/`, is_in_stock: true }]));
+    if (u === '/wp-json/wc/store/v1/cart') return send('application/json', '{"items":[]}');
+    const m = u.match(/^\/product\/([\w-]+)\/?$/); if (m) return send('text/html', prod(m[1]));
+    if (u === '/refund_returns/') return send('text/html', `<html><head><title>Refund and Returns Policy</title></head><body><h1>Refund and Returns Policy</h1><p>Returns are accepted within 7 days. Refunds go to the original payment method. ${'Items must be unworn. '.repeat(20)}</p></body></html>`);
+    if (u === '/shipping-policy/') return send('text/html', `<html><head><title>Shipping Policy</title></head><body><h1>Shipping Policy</h1><p>We ship within Lagos in 2 days for ₦2000 and to other states in 5 business days. ${'Tracking is shared by email. '.repeat(20)}</p></body></html>`);
+    send('text/html', '<html><body>nf</body></html>', 404);
+  };
+}
+// Script-built shop: almost no HTML content, few links.
+function jsShop(host) {
+  return (req, res) => { const send = (t, b, c = 200) => { res.writeHead(c, { 'content-type': t }); res.end(b); };
+    const u = req.url.split('?')[0];
+    if (u === '/robots.txt') return send('text/plain', 'User-agent: *\nAllow: /');
+    if (u === '/') return send('text/html', '<html><head><title>Kemi Crafts</title></head><body><div id="root"></div>' + 'Handmade beads and jewellery shop run from Abuja, shipping everywhere in Nigeria with careful packaging and friendly service for every customer. '.repeat(5) + '<script src="/app.js"></script></body></html>');
+    send('text/html', 'nf', 404); };
+}
+module.exports = { good, mid, bad, shellStore, woo, jsShop };

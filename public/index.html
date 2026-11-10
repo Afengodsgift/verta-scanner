@@ -25,7 +25,7 @@ button:disabled{opacity:.6;cursor:wait}
 .f{border-top:1px solid var(--line);padding:10px 0}.f:first-child{border-top:0}
 .f summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:flex-start}.f summary::-webkit-details-marker{display:none}
 .dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:7px}
-.pass{background:var(--ready)}.warn{background:var(--compat)}.fail{background:var(--blind)}.na,.info{background:var(--mut)}
+.pass{background:var(--ready)}.warn{background:var(--compat)}.fail{background:var(--blind)}.na,.info{background:var(--mut)}.unsure{background:transparent;border:2px dashed var(--mut)}
 .body{padding:8px 0 4px 18px;font-size:.93rem}.body p{margin:0 0 8px}
 pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto;font-size:.78rem;max-width:100%}
 textarea{width:100%;min-height:150px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:.92rem}
@@ -54,7 +54,7 @@ let current=null;
 function ring(score,color){const r=56,c=2*Math.PI*r;return `<div class="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="${r}" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="66" cy="66" r="${r}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-score/100)}"/></svg><b>${score}</b></div>`}
 function finding(c){
   const tag=c.sev?`<span class="pill" style="color:${c.sev==='P0'?'var(--blind)':c.sev==='P1'?'var(--fric)':'var(--mut)'}">${c.sev}</span>`:'';
-  const pts=c.status==='na'||c.status==='info'?'':` <span class="mut small">${c.pts}/${c.max}</span>`;
+  const pts=(c.status==='na'||c.status==='info')?'':c.status==='unsure'?` <span class="mut small">couldn't tell</span>`:` <span class="mut small">${c.pts}/${c.max}</span>`;
   return `<details class="f"><summary><span class="dot ${c.status}"></span><span>${tag}${esc(c.title)}${pts}</span></summary><div class="body"><p><b>What we saw:</b> ${esc(c.evidence)}</p>${c.impact?`<p><b>Why it matters:</b> ${esc(c.impact)}</p>`:''}${c.fix?`<p><b>Fix:</b> ${esc(c.fix)}</p>`:''}${c.code?`<pre>${esc(c.code)}</pre>`:''}</div></details>`;
 }
 function outreach(r){
@@ -73,7 +73,7 @@ function render(r,shared){
   const all=r.layers.flatMap(l=>l.checks),by=id=>all.find(c=>c.id===id);
   const notes=(r.meta.notes||[]).map(n=>`<div class="note">${esc(n)}</div>`).join('');
   out.innerHTML=`
-  <div class="card"><div class="hero">${ring(r.score,col)}<div><div class="mut small">${esc(r.meta.host)} · ${esc(r.meta.platform)} · confidence ${esc(r.meta.confidence)}</div><div class="state" style="color:${col}">${esc(r.state.label)}</div><p class="mut" style="margin:4px 0 0">${esc(r.state.line)}</p><p class="small mut" style="margin:6px 0 0">${r.counts.P0} critical · ${r.counts.P1} important · ${r.counts.P2} minor</p></div></div>${notes}</div>
+  <div class="card"><div class="hero">${ring(r.score,col)}<div><div class="mut small">${esc(r.meta.host)} · ${esc(r.meta.platform)} · confidence ${esc(r.meta.confidence)}</div><div class="state" style="color:${col}">${esc(r.state.label)}</div><p class="mut" style="margin:4px 0 0">${esc(r.state.line)}</p><p class="small mut" style="margin:6px 0 0">${r.counts.P0} critical · ${r.counts.P1} important · ${r.counts.P2} minor${r.counts.unsure?` · ${r.counts.unsure} couldn't tell`:''}</p></div></div>${notes}</div>
   <h2>Fix these first</h2><div class="card"><ol class="top" style="margin:0;padding-left:20px">${r.top.map(id=>by(id)).filter(Boolean).map(c=>`<li><b>${esc(c.title)}.</b> ${esc(c.fix)}</li>`).join('')||'<li>Nothing urgent found.</li>'}</ol></div>
   <h2>By layer</h2>${r.layers.map(l=>`<div class="card"><div class="lrow"><span>${esc(l.name)}</span><span style="color:${l.score==null?'var(--mut)':colFor(l.score)}">${l.score==null?'not tested':l.score}</span></div><div class="mut small">${esc(l.question)}</div><div class="bar"><i style="width:${l.score||0}%;background:${l.score==null?'var(--line)':colFor(l.score)}"></i></div>${l.checks.map(finding).join('')}</div>`).join('')}
   <div class="card noprint"><b>Message you can send the store owner</b><p class="mut small">Plain language, top three problems.</p><textarea id="msg" readonly>${esc(outreach(r))}</textarea><div class="row"><button class="ghost" data-copy="msg">Copy message</button></div></div>

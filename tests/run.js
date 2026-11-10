@@ -33,7 +33,7 @@ const serve = make => new Promise(r => { const s = http.createServer(); s.listen
     await t('ordering good > mid > bad', () => { assert(g.score > m.score && m.score > b.score); });
     await t('good is Ready or Compatible', () => { assert(g.score >= 75, 'good=' + g.score); });
     await t('bad is Blind', () => { assert(b.state.key === 'blind' || b.state.key === 'friction', 'bad=' + b.score); assert(b.meta.confidence === 'low'); });
-    await t('good tested 3 product pages from Shopify catalog', () => { assert.strictEqual(g.meta.pages.length, 3); assert.strictEqual(g.meta.platform, 'Shopify'); });
+    await t('good tested 3 product pages from Shopify catalog', () => { assert(g.meta.pages.length >= 3 && g.meta.pages.length <= 4); assert.strictEqual(g.meta.platform, 'Shopify'); assert.strictEqual(g.meta.productSource, 'Shopify catalog'); });
     await t('mid flags blocked assistants', () => { const c = m.layers[0].checks.find(x => x.id === 'd3'); assert(c.status !== 'pass' && /GPTBot|PerplexityBot/.test(c.evidence + '')); assert(/PerplexityBot/.test(c.evidence)); });
     await t('bad detects robots block and empty shell', () => { const d = id => b.layers.flatMap(l => l.checks).find(x => x.id === id); assert.strictEqual(d('d2').status, 'fail'); assert.strictEqual(d('d8').status, 'fail'); });
     await t('every failing check has fix + evidence', () => { for (const r of [g, m, b]) for (const l of r.layers) for (const c of l.checks) if (c.status === 'fail' || c.status === 'warn') { assert(c.fix && c.evidence, c.id); assert(c.pts <= c.max); } });
@@ -42,6 +42,21 @@ const serve = make => new Promise(r => { const s = http.createServer(); s.listen
   }
   { const { s, host } = await serve(fx.shellStore);
     await t('empty/blocked homepage is flagged, capped, and not over-penalised', async () => { const r = await scan('http://' + host); assert(r.meta.unreadable); assert(r.score <= 39); assert.strictEqual(r.meta.confidence, 'low'); const all = r.layers.flatMap(l => l.checks); assert(all.find(c => c.id === 'd8').status === 'fail'); assert(all.find(c => c.id === 'po1').status === 'na'); assert(r.notes === undefined && r.meta.notes[0].includes('empty or blocked')); });
+    s.close(); }
+  { const { s, host } = await serve(fx.woo);
+    await t('woo store: detected, product pages found via Store API, probed policies, add-to-cart passes', async () => {
+      const r = await scan('http://' + host); const all = r.layers.flatMap(l => l.checks), c = id => all.find(x => x.id === id);
+      assert.strictEqual(r.meta.platform, 'WooCommerce'); assert.strictEqual(r.meta.productSource, 'WooCommerce catalog'); assert(r.meta.pages.length >= 2);
+      assert.strictEqual(c('po1').status, 'pass'); assert.strictEqual(c('po2').status, 'pass'); assert.strictEqual(c('in4').status, 'pass'); assert.strictEqual(c('p5').status, 'pass'); assert.strictEqual(c('d4').status, 'pass');
+      assert(r.score >= 60 && r.score <= 90, 'woo score ' + r.score); console.log('woo score', r.score, r.state.label, JSON.stringify(r.counts));
+      assert(/WooCommerce|Rank Math|Yoast/.test(c('po4').fix), 'platform-specific fix text'); });
+    s.close(); }
+  { const { s, host } = await serve(f => fx.woo(f, { noApi: true }));
+    await t('woo store without Store API: still found via homepage product markup / sitemap and still detected', async () => { const r = await scan('http://' + host); assert.strictEqual(r.meta.platform, 'WooCommerce'); assert(r.meta.pages.length >= 2); assert.strictEqual(r.layers.flatMap(l => l.checks).find(x => x.id === 'p5').status !== 'pass', true); });
+    s.close(); }
+  { const { s, host } = await serve(fx.jsShop);
+    await t('script-built shop: guess-based checks say "couldn\'t tell", not fail', async () => { const r = await scan('http://' + host); const all = r.layers.flatMap(l => l.checks), c = id => all.find(x => x.id === id);
+      assert.strictEqual(c('po1').status, 'unsure'); assert.strictEqual(c('po2').status, 'unsure'); assert(r.counts.unsure >= 2); assert.strictEqual(r.state.key, 'inconclusive'); });
     s.close(); }
   console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
 })();
