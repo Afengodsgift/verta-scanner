@@ -1,0 +1,4 @@
+{
+  "functions": { "api/scan.js": { "maxDuration": 30 } },
+  "outputDirectory": "public"
+}

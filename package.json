@@ -1,0 +1,9 @@
+{
+  "name": "verta-scanner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Verta Readiness Scanner: checks how understandable and operable a commerce site is to intelligent systems.",
+  "scripts": { "test": "node tests/run.js", "dev": "node tests/dev-server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "cheerio": "1.0.0" }
+}
