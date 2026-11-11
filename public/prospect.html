@@ -1,48 +1,67 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Verta prospect list</title><meta name="robots" content="noindex">
+<html lang="en"><head><title>Your Verta prospects</title><meta name="robots" content="noindex">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try{var t=localStorage.getItem("verta_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css"></head><body><div class="wrap">
-<header class="top"><a class="logo" href="/"><i></i>Verta</a><nav><a href="/">Single scan</a></nav></header>
-<h1 style="max-width:20ch">Find the stores that need you most</h1>
-<p class="lede">Paste up to 10 store addresses, one per line. The lowest scores with real, fixable problems are your best leads. Your list stays in this browser.</p>
-<section class="panel"><textarea id="list" aria-label="Store addresses" placeholder="store-one.com&#10;store-two.com" style="min-height:130px"></textarea>
-<div class="row"><button class="btn" id="run">Scan the list</button><button class="btn ghost" id="csv" disabled>Download CSV</button><span class="mut small" id="st" aria-live="polite" style="align-self:center"></span></div></section>
-<section class="panel tbl hide" id="tw"><table><thead><tr><th>Store</th><th>Score</th><th>Platform</th><th>Biggest problem</th><th>Critical</th><th>Status</th><th></th></tr></thead><tbody id="tb"></tbody></table></section>
-<section class="panel hide" id="mw"><b id="mt">Message</b><textarea id="msg" aria-label="Message" style="margin-top:10px"></textarea><div class="row"><button class="btn ghost" id="mc">Copy message</button><button class="btn ghost" id="mr">Open full report</button></div><p class="mut small" id="tip" aria-live="polite"></p></section>
-<footer>Ten scans at a time keeps you under the scanner's rate limit (12 per 10 minutes per person). Contact only businesses you could reasonably help, keep messages honest about what the free scan can and cannot see, and stop when someone says no.</footer>
-</div>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+
+</head><body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="page" id="nav"></div>
+<main id="main" class="page" style="padding-bottom:32px">
+<header style="padding:32px 0 8px"><h1 class="page-h">Your Verta prospects</h1><p class="lede" style="margin-top:12px">Find stores with meaningful AI commerce readiness problems. Your list is saved in this browser only.</p></header>
+<section class="card" aria-labelledby="bulkH" style="margin-top:24px"><h2 class="card-h" id="bulkH">Scan stores</h2><p class="muted sm" style="margin:4px 0 12px">One address per line, up to ten at a time. The scanner allows about 12 scans per 10 minutes from one network.</p>
+<label class="sr" for="list">Store addresses</label><textarea id="list" style="min-height:130px" placeholder="store-one.com&#10;store-two.com"></textarea>
+<div class="row"><button class="btn" id="run">Start scanning</button><button class="btn secondary" id="csv" disabled>Download CSV</button><button class="btn secondary" id="clear" disabled>Clear list</button></div>
+<p class="muted sm" id="st" role="status" style="margin:12px 0 0"></p><div class="bulk-bar hide" id="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Scan progress"><i></i></div></section>
+<div class="stat-row hide" id="stats"></div>
+<section class="card hide" id="results" style="margin-top:16px;padding:12px" aria-labelledby="resH"><h2 class="sr" id="resH">Prospects</h2>
+<div class="scroll-x"><table class="ptable"><thead><tr><th>Store</th><th>Readiness</th><th>Platform</th><th>Biggest problem</th><th>Critical</th><th>Outreach status</th><th>Actions</th></tr></thead><tbody id="tb"></tbody></table></div><div class="pcards" id="cards"></div></section>
+<section class="card empty" id="empty"><h3 class="card-h">No prospects yet</h3><p>Paste a few store addresses above and start scanning. The lowest scores with fixable problems make the best conversations.</p></section>
+<div id="msgWrap" class="hide" style="margin-top:16px"></div>
+<p class="muted sm" style="margin-top:24px;max-width:70ch">Contact only businesses you could reasonably help, be honest about what a free scan can and cannot see, and stop when someone says no.</p>
+</main>
+<div id="foot"></div>
 <script src="/config.js"></script><script src="/app.js"></script>
 <script>
-const KEY='verta_prospects_v1';let rows=[];
-try{rows=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(rows.map(r=>({host:r.host,score:r.score,platform:r.platform,state:r.state,top:r.top,p0:r.p0,status:r.status,error:r.error,full:r.full}))))}catch(e){}};
-const STATUS=['New','Contacted','Replied','Call booked','Won','Passed'];
+MainNavigation('/prospect.html');Footer();
+const KEY='verta_prospects_v1',STATUS=['New','Contacted','Replied','Call booked','Won','Passed'];
+let rows=safe(()=>JSON.parse(localStorage.getItem(KEY)||'[]'))||[];
+const save=()=>safe(()=>localStorage.setItem(KEY,JSON.stringify(rows)));
+const sortRows=()=>rows.sort((a,b)=>(a.score==null)-(b.score==null)||a.score-b.score);
+const scoreHtml=r=>{const b=bandFor(r.score);return r.score==null?'<span class="nt-label">Not scanned</span>':`<span class="psc t-${b.k}">${r.score}</span> ${Badge(b)}`};
+const statusSel=(r,i)=>`<select class="status" data-i="${i}" aria-label="Outreach status for ${esc(r.host)}">${STATUS.map(s=>`<option${s===r.status?' selected':''}>${s}</option>`).join('')}</select>`;
+const actions=(r,i)=>r.full?`<div class="row" style="margin:0"><button class="btn secondary sm" data-rep="${i}">View report</button><button class="btn secondary sm" data-msg="${i}">Message</button></div>`:'';
 function draw(){
-  $('#tw').classList.toggle('hide',!rows.length);$('#csv').disabled=!rows.length;
-  rows.sort((a,b)=>(a.score==null)-(b.score==null)||a.score-b.score);
-  $('#tb').innerHTML=rows.map((r,i)=>`<tr><td><b>${esc(r.host)}</b></td><td class="sc" style="color:${colFor(r.score)}">${r.score==null?'-':r.score}</td><td>${esc(r.platform||'')}</td><td>${r.error?`<span class="mut">${esc(r.error)}</span>`:esc(r.top||'')}</td><td>${r.p0??''}</td>
-  <td><select data-i="${i}" aria-label="Status for ${esc(r.host)}">${STATUS.map(s=>`<option${s===r.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${r.full?`<button class="btn ghost" data-m="${i}">Message</button>`:''}</td></tr>`).join('');
-  $('#tb').querySelectorAll('select').forEach(s=>s.onchange=()=>{rows[+s.dataset.i].status=s.value;save()});
-  $('#tb').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.m];$('#mw').classList.remove('hide');$('#mt').textContent='Message for '+r.host;$('#msg').value=emailMsg(r.full);$('#mr').onclick=()=>{const x=btoa(unescape(encodeURIComponent(JSON.stringify(r.full)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');open('/#r='+x,'_blank')};$('#mw').scrollIntoView({behavior:'smooth'})});
+  const has=rows.length;$('#results').classList.toggle('hide',!has);$('#empty').classList.toggle('hide',!!has);$('#csv').disabled=$('#clear').disabled=!has;
+  sortRows();
+  const ok=rows.filter(r=>r.score!=null),hot=ok.filter(r=>r.score<65);
+  $('#stats').classList.toggle('hide',!has);$('#stats').innerHTML=`<div class="card stat"><b>${rows.length}</b><span>Stores scanned</span></div><div class="card stat"><b>${hot.length}</b><span>Score under 65</span></div><div class="card stat"><b>${rows.filter(r=>r.status!=='New'&&r.status!=='Passed').length}</b><span>In conversation</span></div>`;
+  $('#tb').innerHTML=rows.map((r,i)=>`<tr><td><b>${esc(r.host)}</b></td><td>${scoreHtml(r)}</td><td>${esc(r.platform||'')}</td><td style="max-width:260px">${r.error?`<span class="muted">${esc(r.error)}</span>`:esc(r.top||'')}</td><td>${r.p0==null?'':r.p0}</td><td>${statusSel(r,i)}</td><td>${actions(r,i)}</td></tr>`).join('');
+  $('#cards').innerHTML=rows.map((r,i)=>`<article class="card pcard"><div class="top"><div><b>${esc(r.host)}</b><div class="muted sm">${esc(r.platform||'')}</div></div><div style="text-align:right">${scoreHtml(r)}</div></div><p style="margin:12px 0 4px">${r.error?`<span class="muted">${esc(r.error)}</span>`:esc(r.top||'')}</p>${r.p0!=null?`<p class="muted sm" style="margin:0 0 12px">${r.p0} critical finding${r.p0===1?'':'s'}</p>`:''}<div class="row">${statusSel(r,i)}</div><div style="margin-top:12px">${actions(r,i)}</div></article>`).join('');
+  $$('select.status').forEach(s=>s.onchange=()=>{rows[+s.dataset.i].status=s.value;save();draw()});
+  $$('[data-rep]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.rep];window.open('/#r='+encodeReport(r.full),'_blank','noopener')});
+  $$('[data-msg]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.msg];const w=$('#msgWrap');w.classList.remove('hide');w.innerHTML=`<h2 class="sec-h" style="margin-bottom:12px">${esc(r.host)}</h2>`+OutreachPanel(r.full,'p');bindOutreach(w,r.full,'p');w.scrollIntoView({behavior:REDUCED?'auto':'smooth'})});
 }
-$('#mc').onclick=async()=>{try{await navigator.clipboard.writeText($('#msg').value);$('#tip').textContent='Copied.'}catch(e){$('#tip').textContent='Copy failed. Select the text and copy it by hand.'}};
 $('#run').onclick=async()=>{
-  const hosts=[...new Set($('#list').value.split(/\s+/).map(s=>s.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'')).filter(Boolean))].slice(0,10);
+  const hosts=[...new Set($('#list').value.split(/\s+/).map(s=>s.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'')).filter(Boolean))];
   if(!hosts.length){$('#st').textContent='Paste at least one store address.';return}
-  $('#run').disabled=true;
-  for(let i=0;i<hosts.length;i++){
-    $('#st').textContent=`Scanning ${i+1} of ${hosts.length}: ${hosts[i]}`;
-    rows=rows.filter(r=>r.host!==hosts[i]);
-    try{const r=await scanUrl(hosts[i]);const t=topChecks(r)[0];
-      rows.push({host:hosts[i],score:r.score,platform:r.meta.platform,state:r.state.label,top:t?t.title:'None found',p0:r.counts.P0,status:'New',full:r})}
-    catch(e){rows.push({host:hosts[i],score:null,error:e.message,status:'New'})}
+  const batch=hosts.slice(0,10),skipped=hosts.length-batch.length;
+  $('#run').disabled=true;$('#bar').classList.remove('hide');
+  for(let i=0;i<batch.length;i++){
+    $('#st').textContent=`Scanning ${i+1} of ${batch.length}: ${batch[i]}`;$('#bar').setAttribute('aria-valuenow',Math.round(100*i/batch.length));$('#bar i').style.width=(100*i/batch.length)+'%';
+    rows=rows.filter(r=>r.host!==batch[i]);
+    try{const r=await scanUrl(batch[i]);const t=topChecks(r)[0];rows.push({host:batch[i],score:r.score,platform:r.meta.platform,state:r.state.label,top:t?t.title:'None found',p0:r.counts.P0,status:'New',full:r})}
+    catch(e){rows.push({host:batch[i],score:null,error:classifyError(e.message,e.status).t+'. '+e.message,status:'New'})}
     draw();save();
   }
-  $('#st').textContent='Done. Lowest scores are at the top.';$('#run').disabled=false;
+  $('#bar i').style.width='100%';$('#bar').setAttribute('aria-valuenow',100);
+  $('#st').textContent='Done. Lowest scores are at the top.'+(skipped?` ${skipped} address${skipped===1?' was':'es were'} left out because the limit is ten per batch.`:'');$('#run').disabled=false;
 };
 $('#csv').onclick=()=>{const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;const t=['host,score,platform,state,biggest_problem,critical,status',...rows.map(r=>[r.host,r.score,r.platform,r.state,r.top,r.p0,r.status].map(q).join(','))].join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='verta-prospects.csv';a.click()};
+$('#clear').onclick=()=>{if(confirm('Remove all prospects from this browser?')){rows=[];save();draw();$('#msgWrap').classList.add('hide')}};
 draw();
 </script></body></html>

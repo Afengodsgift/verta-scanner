@@ -8,5 +8,5 @@ http.createServer((req, res) => {
     return;
   }
   const f = path.join(__dirname, '../public', req.url === '/' ? 'index.html' : req.url.split('?')[0]);
-  fs.readFile(f, (e, d) => { if (e) { res.statusCode = 404; return res.end('nf'); } res.setHeader('content-type', ({'.html':'text/html','.css':'text/css','.js':'text/javascript'})[path.extname(f)] || 'text/plain'); res.end(d); });
+  fs.readFile(f, (e, d) => { if (e) { res.statusCode = 404; return res.end('nf'); } res.setHeader('content-type', ({'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png'})[path.extname(f)] || 'text/plain'); res.end(d); });
 }).listen(3000, () => console.log('http://localhost:3000'));

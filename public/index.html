@@ -1,33 +1,73 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Verta Readiness Scanner</title>
-<meta name="description" content="Free check: can AI shopping assistants find, understand and buy from your online store?">
+<html lang="en"><head>
+<title>Verta — AI Commerce Readiness Scanner</title>
+<meta name="description" content="Discover whether AI shopping assistants can find, understand and purchase products from your online store.">
+<meta property="og:type" content="website"><meta property="og:title" content="Verta — AI Commerce Readiness Scanner"><meta property="og:description" content="Discover whether AI shopping assistants can find, understand and purchase products from your online store.">
+<meta property="og:image" content="https://verta-scanner.vercel.app/og.png"><meta name="twitter:card" content="summary_large_image">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try{var t=localStorage.getItem("verta_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css"></head><body><div class="wrap">
-<header class="top"><a class="logo" href="/"><i></i>Verta</a><nav><a href="/prospect.html">Prospect list</a></nav></header>
-<main>
-<div id="intro">
-<h1>Can an AI assistant buy from your store?</h1>
-<p class="lede">Paste your store address. In about 20 seconds you get a score, what is holding it back, and how to fix each problem. Free, and nothing is saved.</p>
-<form class="scan" id="f"><input id="u" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="yourstore.com" aria-label="Store address"><button class="btn" id="go">Scan my store</button></form>
-<p class="works">Works with WooCommerce, Wix, Squarespace, Shopify and custom-built stores.</p>
-<div class="how"><div><b>It looks like an agent does</b>We open your pages the way a shopping assistant would: homepage, sitemap, product pages, policies, cart.</div><div><b>Eight layers, one score</b>Findability, product data, price, stock, policies, page structure and checkout signals, each scored on its own.</div><div><b>Plain-language fixes</b>Every problem comes with what we saw, why it matters and how to fix it on your platform.</div></div>
-</div>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="page" id="nav"></div>
+<main id="main" class="page">
+<section class="hero" aria-labelledby="h1"><div class="hero-grid"><div>
+  <h1 class="hero-h" id="h1">Can an AI assistant buy from your store?</h1>
+  <p class="lede" style="margin-top:20px">AI shopping assistants are changing how people discover and purchase products. Find out whether your store is ready for them.</p>
+  <form class="scanner" id="f" novalidate><label class="sr" for="u">Store address</label><input id="u" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://yourstore.com"><button class="btn" id="go" type="submit">Scan my store</button></form>
+  <p class="field-err" id="err" role="alert"></p>
+  <div class="platforms" aria-label="Supported platforms"><span><i></i>Shopify</span><span><i></i>WooCommerce</span><span><i></i>Wix</span><span><i></i>Squarespace</span><span><i></i>Custom-built stores</span></div>
+  <p class="muted sm">Free to scan. No account required. Verta does not keep a copy of your scan results.</p>
+</div><aside class="hero-card card" id="heroCard" aria-label="Example result" hidden></aside></div></section>
 <div id="out" aria-live="polite"></div>
-</main>
-<footer>Verta Readiness Scanner v0.1. The score is a working framework, not a certification. It sees only what a public visitor sees, and cannot test checkout or anything behind a login.</footer>
+<div id="marketing">
+<section class="section" aria-labelledby="howH"><h2 class="sec-h" id="howH">How it works</h2>
+  <ol class="steps" style="list-style:none;padding:0">
+    <li class="step"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg></div><span class="step-n">Step 1</span><h3 class="card-h">Enter your store</h3><p class="muted">Paste your store address. A homepage or a direct product link both work.</p></li>
+    <li class="step"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3M4 12h16"/></svg></div><span class="step-n">Step 2</span><h3 class="card-h">Verta investigates</h3><p class="muted">It reads your storefront pages, product data, stock and price signals, policies and checkout signals the way a shopping assistant would.</p></li>
+    <li class="step"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg></div><span class="step-n">Step 3</span><h3 class="card-h">Get your readiness report</h3><p class="muted">An overall score, eight layer scores, and a fix list in priority order, each with what we saw and why it matters.</p></li>
+  </ol></section>
+<section class="section" aria-labelledby="prevH"><h2 class="sec-h" id="prevH">What you get</h2><p class="muted" style="max-width:56ch">A plain-language report you can act on or hand to your developer.</p>
+  <p class="example-tag" style="margin-top:24px">Example report for illustration. Not a real store.</p>
+  <div class="preview-wrap" id="preview" aria-label="Example report"></div></section>
+<section class="section noprint"><div class="cta-band"><h2 class="sec-h" style="font-size:clamp(26px,4vw,36px)">Your store might be ready for the next era of commerce. Find out.</h2><a class="btn" href="#h1" id="cta">Check my store</a></div></section>
 </div>
+</main>
+<div id="foot"></div>
 <script src="/config.js"></script><script src="/app.js"></script>
 <script>
-const out=$('#out'),STEPS=['Opening the homepage','Checking robots.txt and sitemap','Finding product pages','Reading product data','Checking policies and checkout signals','Scoring'];
-let timer;
-$('#f').addEventListener('submit',async e=>{
-  e.preventDefault();const url=$('#u').value.trim();if(!url)return;const b=$('#go');b.disabled=true;b.textContent='Scanning...';
-  let i=0;const draw=()=>{out.innerHTML=`<div class="panel steps">${STEPS.map((s,k)=>`<div class="${k<=i?'on':''}">${k<i?'Done':k===i?'Now':'Next'}: ${s}</div>`).join('')}</div>`};draw();timer=setInterval(()=>{if(i<STEPS.length-1){i++;draw()}},3200);
-  try{const r=await scanUrl(url);$('#intro').classList.add('hide');render(r,out);window.scrollTo({top:0,behavior:'smooth'})}
-  catch(err){out.innerHTML=`<div class="panel err"><b>The scan did not finish.</b><p>${esc(err.message)}</p></div>`}
-  finally{clearInterval(timer);b.disabled=false;b.textContent='Scan my store'}
-});
-(function(){const m=location.hash.match(/^#r=([\w-]+)/);if(!m)return;try{let s=m[1].replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const r=JSON.parse(decodeURIComponent(escape(atob(s))));if(r&&r.layers&&r.state){$('#intro').classList.add('hide');render(r,out)}}catch(e){}})();
+MainNavigation('/');Footer();
+const out=$('#out'),form=$('#f'),input=$('#u'),goBtn=$('#go'),errEl=$('#err');
+let aborter=null,lastUrl='';
+function setErr(m){errEl.textContent=m||'';input.setAttribute('aria-invalid',m?'true':'false');if(m)input.setAttribute('aria-describedby','err');else input.removeAttribute('aria-describedby')}
+async function run(raw){
+  const n=normalizeUrl(raw);if(n.err){setErr(n.err);input.focus();return}
+  setErr('');lastUrl=raw;input.disabled=goBtn.disabled=true;goBtn.textContent='Scanning...';
+  out.innerHTML=ScanProgress();aborter=new AbortController();
+  const t0=Date.now(),el=setInterval(()=>{const e=$('#elapsed');if(e)e.textContent=Math.floor((Date.now()-t0)/1000)+'s'},1000);
+  $('#cancel').onclick=()=>aborter.abort();
+  try{const r=await scanUrl(n.url,45000,aborter.signal);mountReport(r,out);window.scrollTo({top:0,behavior:'smooth'})}
+  catch(e){if(e.cancelled){out.innerHTML='';setErr('')}else{out.innerHTML=ScanError(e.message,e.status);const rt=$('#retry');if(rt)rt.onclick=()=>run(lastUrl)}}
+  finally{clearInterval(el);input.disabled=goBtn.disabled=false;goBtn.textContent='Scan my store'}
+}
+form.addEventListener('submit',e=>{e.preventDefault();run(input.value)});
+input.addEventListener('input',()=>{if(errEl.textContent)setErr('')});
+$('#cta').addEventListener('click',()=>setTimeout(()=>input.focus(),300));
+(function(){const r=decodeReport(location.hash);if(r)mountReport(r,out)})();
+/* example report: built with the same components */
+(function(){
+  const L=(id,name,q,score,checks=[])=>({id,name,question:q,score,checks});
+  const S={score:62,state:{key:'compatible',label:'Verta Compatible',line:''},counts:{P0:0,P1:2,P2:3,unsure:0},meta:{host:'example-store.com',platform:'WooCommerce',confidence:'high',pages:['a','b','c']},top:['a1','a2'],
+   layers:[L('discover','Discoverability','',84),L('semantic','Semantic clarity','',71),L('infra','Product infrastructure','',58),L('inventory','Inventory','',35),L('pricing','Pricing','',90),L('policies','Policies','',48),L('interact','Interaction','',77),L('transact','Transaction readiness','',null)]};
+  S.layers[3].checks=[{id:'a1',sev:'P1',status:'fail',title:'Availability stated in the data',evidence:'Product pages show "In stock" in text, but no availability value is in the structured data.',impact:'An assistant cannot reliably tell whether the item can be bought right now.',fix:'Add availability to every Offer and keep it current.'}];
+  S.layers[5].checks=[{id:'a2',sev:'P1',status:'warn',title:'Returns policy findable',evidence:'No link to a returns page was found in the footer.',impact:'Assistants skip stores whose return terms they cannot read.',fix:'Publish a returns page and link it in the footer.'}];
+  $('#preview').innerHTML='<div class="summary">'+ReadinessScore(S)+LayerScoreChart(S)+'</div><div class="issues">'+topChecks(S).map(PriorityIssueCard).join('')+'</div>';
+  const hc=$('#heroCard');hc.innerHTML='<p class="example-tag">Example result, not a real store</p><div class="hc-score t-compat">62<small>/100</small></div><div style="margin:8px 0 16px">'+Badge(BANDS.compat,'Verta Compatible')+'</div><ul class="layers">'+[S.layers[3],S.layers[4],S.layers[5]].map(LayerScoreRow).join('')+'</ul>';hc.hidden=false;
+  $$('#heroCard .track i, #preview .track i').forEach(i=>i.style.width=i.dataset.w+'%');
+  $$('#preview .track i').forEach(i=>i.style.width=i.dataset.w+'%');
+  const sn=$('#preview .score-num');if(sn)sn.firstChild.nodeValue=S.score;
+})();
 </script></body></html>
