@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><title>Your Verta prospects</title><meta name="robots" content="noindex">
+<html lang="en"><head><title>Verta prospects (team)</title><meta name="robots" content="noindex,nofollow">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script>try{var t=localStorage.getItem("verta_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
@@ -10,7 +10,7 @@
 </head><body>
 <a class="skip" href="#main">Skip to content</a>
 <div class="page" id="nav"></div>
-<main id="main" class="page" style="padding-bottom:32px">
+<main id="main" class="page" style="padding-bottom:32px"><div id="gate"></div><div id="tool" class="hide">
 <header style="padding:32px 0 8px"><h1 class="page-h">Your Verta prospects</h1><p class="lede" style="margin-top:12px">Find stores with meaningful AI commerce readiness problems. Your list is saved in this browser only.</p></header>
 <section class="card" aria-labelledby="bulkH" style="margin-top:24px"><h2 class="card-h" id="bulkH">Scan stores</h2><p class="muted sm" style="margin:4px 0 12px">One address per line, up to ten at a time. The scanner allows about 12 scans per 10 minutes from one network.</p>
 <label class="sr" for="list">Store addresses</label><textarea id="list" style="min-height:130px" placeholder="store-one.com&#10;store-two.com"></textarea>
@@ -22,11 +22,11 @@
 <section class="card empty" id="empty"><h3 class="card-h">No prospects yet</h3><p>Paste a few store addresses above and start scanning. The lowest scores with fixable problems make the best conversations.</p></section>
 <div id="msgWrap" class="hide" style="margin-top:16px"></div>
 <p class="muted sm" style="margin-top:24px;max-width:70ch">Contact only businesses you could reasonably help, be honest about what a free scan can and cannot see, and stop when someone says no.</p>
-</main>
+</div></main>
 <div id="foot"></div>
 <script src="/config.js"></script><script src="/app.js"></script>
 <script>
-MainNavigation('/prospect.html');Footer();
+MainNavigation('/app/prospects','app');Footer('app');
 const KEY='verta_prospects_v1',STATUS=['New','Contacted','Replied','Call booked','Won','Passed'];
 let rows=safe(()=>JSON.parse(localStorage.getItem(KEY)||'[]'))||[];
 const save=()=>safe(()=>localStorage.setItem(KEY,JSON.stringify(rows)));
@@ -42,7 +42,7 @@ function draw(){
   $('#tb').innerHTML=rows.map((r,i)=>`<tr><td><b>${esc(r.host)}</b></td><td>${scoreHtml(r)}</td><td>${esc(r.platform||'')}</td><td style="max-width:260px">${r.error?`<span class="muted">${esc(r.error)}</span>`:esc(r.top||'')}</td><td>${r.p0==null?'':r.p0}</td><td>${statusSel(r,i)}</td><td>${actions(r,i)}</td></tr>`).join('');
   $('#cards').innerHTML=rows.map((r,i)=>`<article class="card pcard"><div class="top"><div><b>${esc(r.host)}</b><div class="muted sm">${esc(r.platform||'')}</div></div><div style="text-align:right">${scoreHtml(r)}</div></div><p style="margin:12px 0 4px">${r.error?`<span class="muted">${esc(r.error)}</span>`:esc(r.top||'')}</p>${r.p0!=null?`<p class="muted sm" style="margin:0 0 12px">${r.p0} critical finding${r.p0===1?'':'s'}</p>`:''}<div class="row">${statusSel(r,i)}</div><div style="margin-top:12px">${actions(r,i)}</div></article>`).join('');
   $$('select.status').forEach(s=>s.onchange=()=>{rows[+s.dataset.i].status=s.value;save();draw()});
-  $$('[data-rep]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.rep];window.open('/#r='+encodeReport(r.full),'_blank','noopener')});
+  $$('[data-rep]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.rep];window.open('/report#r='+encodeReport(r.full),'_blank','noopener')});
   $$('[data-msg]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.msg];const w=$('#msgWrap');w.classList.remove('hide');w.innerHTML=`<h2 class="sec-h" style="margin-bottom:12px">${esc(r.host)}</h2>`+OutreachPanel(r.full,'p');bindOutreach(w,r.full,'p');w.scrollIntoView({behavior:REDUCED?'auto':'smooth'})});
 }
 $('#run').onclick=async()=>{
@@ -54,7 +54,7 @@ $('#run').onclick=async()=>{
     $('#st').textContent=`Scanning ${i+1} of ${batch.length}: ${batch[i]}`;$('#bar').setAttribute('aria-valuenow',Math.round(100*i/batch.length));$('#bar i').style.width=(100*i/batch.length)+'%';
     rows=rows.filter(r=>r.host!==batch[i]);
     try{const r=await scanUrl(batch[i]);const t=topChecks(r)[0];rows.push({host:batch[i],score:r.score,platform:r.meta.platform,state:r.state.label,top:t?t.title:'None found',p0:r.counts.P0,status:'New',full:r})}
-    catch(e){rows.push({host:batch[i],score:null,error:classifyError(e.message,e.status).t+'. '+e.message,status:'New'})}
+    catch(e){if(e.status===401){$('#tool').classList.add('hide');start('That access key was not accepted.');$('#run').disabled=false;return}rows.push({host:batch[i],score:null,error:classifyError(e.message,e.status).t+'. '+e.message,status:'New'})}
     draw();save();
   }
   $('#bar i').style.width='100%';$('#bar').setAttribute('aria-valuenow',100);
@@ -64,4 +64,6 @@ $('#csv').onclick=()=>{const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='verta-prospects.csv';a.click()};
 $('#clear').onclick=()=>{if(confirm('Remove all prospects from this browser?')){rows=[];save();draw();$('#msgWrap').classList.add('hide')}};
 draw();
+function start(msg){Gate($('#gate'),()=>$('#tool').classList.remove('hide'),msg)}
+start();
 </script></body></html>

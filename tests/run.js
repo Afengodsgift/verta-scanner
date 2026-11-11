@@ -19,6 +19,18 @@ const serve = make => new Promise(r => { const s = http.createServer(); s.listen
     try { for (const u of ['http://127.0.0.1/', 'http://localhost/', 'http://169.254.169.254/latest', 'http://[::1]/', 'http://metadata.google.internal/', 'ftp://example.com', 'http://user:pw@example.com', 'http://example.com:22']) { let threw = false; try { await N.safeFetch(u); } catch (e) { threw = true; } assert(threw, u); } }
     finally { process.env.ALLOW_PRIVATE = '1'; }
   });
+  await t('api: team key gate (fails closed, wrong key, right key)', async () => {
+    const api = require('../api/scan');
+    const call = async (headers, env) => { const old = process.env.VERTA_ACCESS_KEY; if (env === undefined) delete process.env.VERTA_ACCESS_KEY; else process.env.VERTA_ACCESS_KEY = env;
+      let code = 200, body; const res = { setHeader() {}, status(c) { code = c; return res; }, json(o) { body = o; return res; } };
+      await api({ method: 'POST', headers, body: { url: '' }, socket: { remoteAddress: '9.9.9.' + Math.floor(Math.random() * 250) } }, res); if (old === undefined) delete process.env.VERTA_ACCESS_KEY; else process.env.VERTA_ACCESS_KEY = old; return code; };
+    assert.strictEqual(await call({ 'x-verta-key': 'x' }, undefined), 503);   // not configured: closed
+    assert.strictEqual(await call({}, 'secret'), 401);                         // no key
+    assert.strictEqual(await call({ 'x-verta-key': 'nope' }, 'secret'), 401);  // wrong key
+    assert.strictEqual(await call({ 'x-verta-key': 'secret' }, 'secret'), 400); // right key reaches validation ("Enter a store address")
+    const getRes = await (async () => { let c; await api({ method: 'GET', headers: { 'x-verta-key': 'secret' }, socket: {} }, { setHeader() {}, status(x) { c = x; return { json() {} }; } }); return c; })();
+    assert.strictEqual(getRes, 405);
+  });
   const results = {};
   for (const k of ['good', 'mid', 'bad']) {
     const { s, host } = await serve(fx[k]);

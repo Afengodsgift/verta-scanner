@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head>
-<title>Verta — AI Commerce Readiness Scanner</title>
-<meta name="description" content="Discover whether AI shopping assistants can find, understand and purchase products from your online store.">
-<meta property="og:type" content="website"><meta property="og:title" content="Verta — AI Commerce Readiness Scanner"><meta property="og:description" content="Discover whether AI shopping assistants can find, understand and purchase products from your online store.">
+<title>Verta — Is your store ready for AI shopping agents?</title>
+<meta name="description" content="Verta shows you, with evidence, whether AI shopping assistants can find your products, read your prices and stock, and complete a purchase, then fixes what is in the way.">
+<meta property="og:type" content="website"><meta property="og:title" content="Verta — Is your store ready for AI shopping agents?"><meta property="og:description" content="Find out whether AI shopping assistants can find, understand and buy from your online store.">
 <meta property="og:image" content="https://verta-scanner.vercel.app/og.png"><meta name="twitter:card" content="summary_large_image">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -10,54 +10,68 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+
 </head><body>
 <a class="skip" href="#main">Skip to content</a>
 <div class="page" id="nav"></div>
 <main id="main" class="page">
 <section class="hero" aria-labelledby="h1"><div class="hero-grid"><div>
-  <h1 class="hero-h" id="h1">Can an AI assistant buy from your store?</h1>
-  <p class="lede" style="margin-top:20px">AI shopping assistants are changing how people discover and purchase products. Find out whether your store is ready for them.</p>
-  <form class="scanner" id="f" novalidate><label class="sr" for="u">Store address</label><input id="u" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://yourstore.com"><button class="btn" id="go" type="submit">Scan my store</button></form>
-  <p class="field-err" id="err" role="alert"></p>
-  <div class="platforms" aria-label="Supported platforms"><span><i></i>Shopify</span><span><i></i>WooCommerce</span><span><i></i>Wix</span><span><i></i>Squarespace</span><span><i></i>Custom-built stores</span></div>
-  <p class="muted sm">Free to scan. No account required. Verta does not keep a copy of your scan results.</p>
+  <h1 class="hero-h" id="h1">Is your store ready for AI shopping agents?</h1>
+  <p class="lede" style="margin-top:20px">People are starting to ask AI assistants what to buy. Verta shows you, with evidence, whether those assistants can find your products, read your prices and stock, and complete a purchase. Then we fix what is in the way.</p>
+  <div id="contact"></div>
+  <p class="muted sm" style="margin-top:12px">The free check uses your public pages only. We never need access to your store.</p>
 </div><aside class="hero-card card" id="heroCard" aria-label="Example result" hidden></aside></div></section>
-<div id="out" aria-live="polite"></div>
-<div id="marketing">
-<section class="section" aria-labelledby="howH"><h2 class="sec-h" id="howH">How it works</h2>
-  <ol class="steps" style="list-style:none;padding:0">
-    <li class="step"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></svg></div><span class="step-n">Step 1</span><h3 class="card-h">Enter your store</h3><p class="muted">Paste your store address. A homepage or a direct product link both work.</p></li>
-    <li class="step"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3M4 12h16"/></svg></div><span class="step-n">Step 2</span><h3 class="card-h">Verta investigates</h3><p class="muted">It reads your storefront pages, product data, stock and price signals, policies and checkout signals the way a shopping assistant would.</p></li>
-    <li class="step"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg></div><span class="step-n">Step 3</span><h3 class="card-h">Get your readiness report</h3><p class="muted">An overall score, eight layer scores, and a fix list in priority order, each with what we saw and why it matters.</p></li>
-  </ol></section>
-<section class="section" aria-labelledby="prevH"><h2 class="sec-h" id="prevH">What you get</h2><p class="muted" style="max-width:56ch">A plain-language report you can act on or hand to your developer.</p>
-  <p class="example-tag" style="margin-top:24px">Example report for illustration. Not a real store.</p>
-  <div class="preview-wrap" id="preview" aria-label="Example report"></div></section>
-<section class="section noprint"><div class="cta-band"><h2 class="sec-h" style="font-size:clamp(26px,4vw,36px)">Your store might be ready for the next era of commerce. Find out.</h2><a class="btn" href="#h1" id="cta">Check my store</a></div></section>
-</div>
+
+<section class="section" id="how" aria-labelledby="howH"><h2 class="sec-h" id="howH">How it works</h2>
+<ol class="steps" style="list-style:none;padding:0">
+<li class="step"><span class="step-n">Step 1</span><h3 class="card-h">Tell us your store</h3><p class="muted">Send your store address. That is all we need for the first check.</p></li>
+<li class="step"><span class="step-n">Step 2</span><h3 class="card-h">Get your readiness report</h3><p class="muted">A score, eight layer scores and a fix list in priority order. Every finding shows what we saw and why it matters.</p></li>
+<li class="step"><span class="step-n">Step 3</span><h3 class="card-h">Decide what to fix</h3><p class="muted">Fix it yourself with the instructions in the report, or have us do it and retest so you can see the before and after.</p></li></ol></section>
+
+<section class="section" aria-labelledby="prevH"><h2 class="sec-h" id="prevH">What the report looks like</h2><p class="muted" style="max-width:56ch">Plain language you can act on, or hand to your developer.</p>
+<p class="example-tag" style="margin-top:24px">Example report for illustration. Not a real store.</p><div class="preview-wrap" id="preview" aria-label="Example report"></div></section>
+
+<section class="section" aria-labelledby="offH"><h2 class="sec-h" id="offH">What Verta does</h2>
+<div class="offers">
+<article class="card"><h3 class="card-h">Free store check</h3><p class="muted">We read your public pages the way a shopping assistant does and send you the readiness report. No cost, no access to your store.</p></article>
+<article class="card"><h3 class="card-h">Agent audit</h3><p class="muted">An AI agent runs real shopping missions on your store: find a product, read the price and stock, add to cart, reach checkout. You get screenshots as proof and a prioritized fix list.</p></article>
+<article class="card"><h3 class="card-h">Fix and retest</h3><p class="muted">We make the changes: structured product data, price and stock markup, policy information. Then we run the same missions again and show the score change.</p></article></div></section>
+
+<section class="section" aria-labelledby="chkH"><h2 class="sec-h" id="chkH">What we look at</h2>
+<ul class="chips-list"><li>Can assistants find your store and products?</li><li>Can they understand what each product is?</li><li>Is your product data readable by machines?</li><li>Can they tell what is in stock?</li><li>Can they read price and currency?</li><li>Can they read shipping and returns rules?</li><li>Can they use your pages without a human?</li><li>Could an authorized agent reach a purchase?</li></ul>
+<p class="muted sm">Works with WooCommerce, Shopify, Wix, Squarespace and custom-built stores. <a href="/about">Read the method</a>.</p></section>
+
+<section class="section" id="faq" aria-labelledby="faqH"><h2 class="sec-h" id="faqH">Questions</h2>
+<div class="faq">
+<details><summary>Do you need access to my store?</summary><p>No. The free check reads public pages only, like any visitor.</p></details>
+<details><summary>Will you place orders on my store?</summary><p>No. Checkout is only observed up to the payment step. We run test payments only on stores that have agreed to it in writing, using processor test cards.</p></details>
+<details><summary>Is the score an official rating?</summary><p>No. It is a working framework that measures how readable and usable a store is for AI assistants. It is not a certification and it does not predict sales.</p></details>
+<details><summary>What does it cost?</summary><p>The free check is free. Agent audits and fixes are quoted after you have seen your report.</p></details>
+<details><summary>What can't the free check see?</summary><p>Anything behind a login, checkout and payment, and pages that only appear after scripts run. The report says exactly what it could not test.</p></details></div></section>
+
+<section class="section"><div class="cta-band"><h2 class="sec-h" style="font-size:clamp(26px,4vw,36px)">Find out what an AI assistant sees on your store.</h2><div id="contact2"></div></div></section>
 </main>
 <div id="foot"></div>
 <script src="/config.js"></script><script src="/app.js"></script>
 <script>
-MainNavigation('/');Footer();
-const out=$('#out'),form=$('#f'),input=$('#u'),goBtn=$('#go'),errEl=$('#err');
-let aborter=null,lastUrl='';
-function setErr(m){errEl.textContent=m||'';input.setAttribute('aria-invalid',m?'true':'false');if(m)input.setAttribute('aria-describedby','err');else input.removeAttribute('aria-describedby')}
-async function run(raw){
-  const n=normalizeUrl(raw);if(n.err){setErr(n.err);input.focus();return}
-  setErr('');lastUrl=raw;input.disabled=goBtn.disabled=true;goBtn.textContent='Scanning...';
-  out.innerHTML=ScanProgress();aborter=new AbortController();
-  const t0=Date.now(),el=setInterval(()=>{const e=$('#elapsed');if(e)e.textContent=Math.floor((Date.now()-t0)/1000)+'s'},1000);
-  $('#cancel').onclick=()=>aborter.abort();
-  try{const r=await scanUrl(n.url,45000,aborter.signal);mountReport(r,out);window.scrollTo({top:0,behavior:'smooth'})}
-  catch(e){if(e.cancelled){out.innerHTML='';setErr('')}else{out.innerHTML=ScanError(e.message,e.status);const rt=$('#retry');if(rt)rt.onclick=()=>run(lastUrl)}}
-  finally{clearInterval(el);input.disabled=goBtn.disabled=false;goBtn.textContent='Scan my store'}
+MainNavigation('','site');Footer('site');
+/* contact: mailto / booking link, set in config.js. Nothing is sent to any server. */
+function ContactBox(id,dark){
+  const el=$('#'+id),hasMail=!!CFG.contactEmail,hasBook=!!CFG.bookingUrl;
+  if(!hasMail&&!hasBook){el.innerHTML='';return}
+  const book=hasBook?`<a class="btn ${hasMail?'secondary':''}" href="${esc(CFG.bookingUrl)}" rel="noopener">Book a call</a>`:'';
+  if(!hasMail){el.innerHTML=`<div class="row">${book}</div>`;return}
+  el.innerHTML=`<form class="lead" novalidate><label class="sr" for="${id}s">Your store address</label><input class="field" id="${id}s" type="text" inputmode="url" autocapitalize="off" autocomplete="off" placeholder="yourstore.com"><label class="sr" for="${id}e">Your email</label><input class="field" id="${id}e" type="email" autocomplete="email" placeholder="you@yourstore.com"><button class="btn" type="submit">Get my free check</button></form><p class="field-err" role="alert"></p><div class="row">${book}</div>`;
+  const f=$('form',el),err=$('.field-err',el);
+  f.onsubmit=e=>{e.preventDefault();const s=$('#'+id+'s').value,m=$('#'+id+'e').value.trim(),n=normalizeUrl(s);
+    if(n.err){err.textContent=n.err;return}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){err.textContent='Enter an email address we can send the report to.';return}
+    err.textContent='';
+    location.href=`mailto:${CFG.contactEmail}?subject=${encodeURIComponent('Free store check: '+s)}&body=${encodeURIComponent(`Hi,\n\nPlease run the free AI readiness check on ${s}.\nMy email: ${m}\n`)}`;
+    err.style.color='var(--ready-t)';err.textContent=`Your email app should open with the request. If it does not, write to ${CFG.contactEmail}.`};
 }
-form.addEventListener('submit',e=>{e.preventDefault();run(input.value)});
-input.addEventListener('input',()=>{if(errEl.textContent)setErr('')});
-$('#cta').addEventListener('click',()=>setTimeout(()=>input.focus(),300));
-(function(){const r=decodeReport(location.hash);if(r)mountReport(r,out)})();
-/* example report: built with the same components */
+ContactBox('contact');ContactBox('contact2');
+/* example report, built with the same components as real reports */
 (function(){
   const L=(id,name,q,score,checks=[])=>({id,name,question:q,score,checks});
   const S={score:62,state:{key:'compatible',label:'Verta Compatible',line:''},counts:{P0:0,P1:2,P2:3,unsure:0},meta:{host:'example-store.com',platform:'WooCommerce',confidence:'high',pages:['a','b','c']},top:['a1','a2'],
@@ -67,7 +81,6 @@ $('#cta').addEventListener('click',()=>setTimeout(()=>input.focus(),300));
   $('#preview').innerHTML='<div class="summary">'+ReadinessScore(S)+LayerScoreChart(S)+'</div><div class="issues">'+topChecks(S).map(PriorityIssueCard).join('')+'</div>';
   const hc=$('#heroCard');hc.innerHTML='<p class="example-tag">Example result, not a real store</p><div class="hc-score t-compat">62<small>/100</small></div><div style="margin:8px 0 16px">'+Badge(BANDS.compat,'Verta Compatible')+'</div><ul class="layers">'+[S.layers[3],S.layers[4],S.layers[5]].map(LayerScoreRow).join('')+'</ul>';hc.hidden=false;
   $$('#heroCard .track i, #preview .track i').forEach(i=>i.style.width=i.dataset.w+'%');
-  $$('#preview .track i').forEach(i=>i.style.width=i.dataset.w+'%');
   const sn=$('#preview .score-num');if(sn)sn.firstChild.nodeValue=S.score;
 })();
 </script></body></html>

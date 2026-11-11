@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><title>Verta readiness report</title><meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try{var t=localStorage.getItem("verta_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+
+</head><body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="page" id="nav"></div>
+<main id="main" class="page"><div id="out" aria-live="polite"></div></main>
+<div id="foot"></div>
+<script src="/config.js"></script><script src="/app.js"></script>
+<script>
+MainNavigation('','site');Footer('site');
+const r=decodeReport(location.hash);
+if(r){document.title='Readiness report: '+r.meta.host+' | Verta';mountReport(r,$('#out'),true)}
+else $('#out').innerHTML='<section class="card empty" style="margin-top:48px"><h1 class="card-h">This report link is incomplete</h1><p>The link may have been cut off when it was copied. Ask the person who sent it for a new one.</p><a class="btn secondary" href="/">Go to Verta</a></section>';
+</script></body></html>

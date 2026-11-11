@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><title>Verta scanner (team)</title><meta name="robots" content="noindex,nofollow">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>try{var t=localStorage.getItem("verta_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+
+</head><body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="page" id="nav"></div>
+<main id="main" class="page">
+<div id="gate"></div>
+<div id="tool" class="hide">
+<section style="padding:32px 0 8px"><h1 class="page-h">Scan a store</h1><p class="lede" style="margin-top:12px">Run the readiness check on a prospect's store, then send them the client report link.</p>
+  <form class="scanner" id="f" novalidate><label class="sr" for="u">Store address</label><input id="u" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://store.com or a product link"><button class="btn" id="go" type="submit">Scan store</button></form>
+  <p class="field-err" id="err" role="alert"></p></section>
+<div id="out" aria-live="polite"></div>
+</div>
+</main>
+<div id="foot"></div>
+<script src="/config.js"></script><script src="/app.js"></script>
+<script>
+MainNavigation('/app/','app');Footer('app');
+const out=$('#out'),form=$('#f'),input=$('#u'),goBtn=$('#go'),errEl=$('#err');
+let aborter=null,lastUrl='';
+function setErr(m){errEl.textContent=m||'';input.setAttribute('aria-invalid',m?'true':'false')}
+function start(msg){Gate($('#gate'),()=>{$('#tool').classList.remove('hide');input.focus()},msg)}
+async function run(raw){
+  const n=normalizeUrl(raw);if(n.err){setErr(n.err);input.focus();return}
+  setErr('');lastUrl=raw;input.disabled=goBtn.disabled=true;goBtn.textContent='Scanning...';
+  out.innerHTML=ScanProgress();aborter=new AbortController();
+  const t0=Date.now(),el=setInterval(()=>{const e=$('#elapsed');if(e)e.textContent=Math.floor((Date.now()-t0)/1000)+'s'},1000);
+  $('#cancel').onclick=()=>aborter.abort();
+  try{const r=await scanUrl(n.url,45000,aborter.signal);mountReport(r,out);window.scrollTo({top:0,behavior:'smooth'})}
+  catch(e){
+    if(e.cancelled){out.innerHTML=''}
+    else if(e.status===401){out.innerHTML='';$('#tool').classList.add('hide');start('That access key was not accepted.')}
+    else{out.innerHTML=ScanError(e.message,e.status);const rt=$('#retry');if(rt)rt.onclick=()=>run(lastUrl)}}
+  finally{clearInterval(el);input.disabled=goBtn.disabled=false;goBtn.textContent='Scan store'}
+}
+form.addEventListener('submit',e=>{e.preventDefault();run(input.value)});
+input.addEventListener('input',()=>{if(errEl.textContent)setErr('')});
+start();
+</script></body></html>

@@ -162,3 +162,12 @@ select.status{min-height:44px;border-radius:10px;border:1.5px solid var(--border
 @media(min-width:960px){.hero-grid{grid-template-columns:1.25fr 1fr;align-items:center;gap:var(--s12)}.hero-card:not([hidden]){display:block}}
 .hc-score{font:800 64px/1 var(--display);letter-spacing:-.05em}.hc-score small{font:600 18px var(--display);letter-spacing:0;color:var(--text2);margin-left:4px}
 .foot a.logo{display:inline-flex;padding:0;font-size:21px;color:var(--text)}
+.nav-links a.nav-cta,.menu a.nav-cta{background:var(--cobalt);color:var(--on-cobalt);padding:10px 16px;border-radius:11px;border-bottom:0}.nav-links a.nav-cta:hover{background:var(--cobalt-h);color:#fff}
+.tool-tag{font:700 11px var(--body);letter-spacing:0;background:var(--surface2);color:var(--text2);border-radius:6px;padding:3px 7px;margin-left:2px}
+.offers{display:grid;gap:var(--s4);margin-top:var(--s6)}@media(min-width:768px){.offers{grid-template-columns:repeat(3,1fr)}}
+.chips-list{list-style:none;padding:0;margin:var(--s6) 0;display:grid;gap:var(--s2) var(--s6)}@media(min-width:768px){.chips-list{grid-template-columns:1fr 1fr}}
+.chips-list li{padding:10px 0 10px 18px;border-bottom:1px solid var(--border);position:relative}.chips-list li:before{content:"";position:absolute;left:0;top:19px;width:7px;height:7px;border-radius:50%;background:var(--cobalt)}
+.faq details{border-bottom:1px solid var(--border);padding:4px 0}.faq summary{cursor:pointer;font-weight:700;padding:14px 0;min-height:44px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}.faq summary:after{content:"+";font-size:20px;color:var(--text2)}.faq details[open] summary:after{content:"–"}.faq p{color:var(--text2);margin:0 0 16px;max-width:64ch}
+.lead{display:grid;gap:var(--s2);max-width:520px;margin-top:var(--s6)}@media(min-width:560px){.lead{grid-template-columns:1fr 1fr}.lead .btn{grid-column:1/-1}}
+.lead .field{min-height:52px}.cta-band .lead .btn{background:var(--canvas);color:var(--text)}.cta-band .field-err{color:#FFB3B9}

@@ -26,17 +26,19 @@ const lname=l=>SHORT[l.id]||l.name, ldesc=l=>DESC[l.id]||l.question;
 /* ---------- theme, nav, footer ---------- */
 function setTheme(t){document.documentElement.dataset.theme=t;safe(()=>localStorage.setItem('verta_theme',t))}
 const isDark=()=>document.documentElement.dataset.theme?document.documentElement.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
-const VertaLogo=()=>`<a class="logo" href="/" aria-label="Verta home"><svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#3457EB"/><path d="M7.5 9.5l6.5 10 6.5-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Verta</a>`;
-const LINKS=[['/','Scanner'],['/prospect.html','Prospect list'],['/about.html','Methodology']];
-function MainNavigation(active){
-  const links=LINKS.map(([h,t])=>`<a href="${h}"${h===active?' aria-current="page"':''}>${t}</a>`).join('');
-  $('#nav').innerHTML=`<nav class="nav" aria-label="Main">${VertaLogo()}<div class="nav-links">${links}</div><div class="nav-tools"><button class="icon-btn" id="theme" aria-label="Switch colour theme">${icon(isDark()?'sun':'moon')}</button><button class="icon-btn menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu" aria-label="Menu">${icon('menu')}</button></div><div class="menu" id="menu" data-open="false">${links}</div></nav>`;
+const VertaLogo=(app)=>`<a class="logo" href="${app?'/app/':'/'}" aria-label="Verta home"><svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#3457EB"/><path d="M7.5 9.5l6.5 10 6.5-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Verta${app?'<span class="tool-tag">Team</span>':''}</a>`;
+const SITE_LINKS=[['/#how','How it works'],['/#faq','FAQ'],['/about','Method']];
+const APP_LINKS=[['/app/','Scanner'],['/app/prospects','Prospects'],['/about','Methodology'],['/','Public site']];
+function MainNavigation(active,mode='site'){
+  const links=(mode==='app'?APP_LINKS:SITE_LINKS).map(([h,t])=>`<a href="${h}"${h===active?' aria-current="page"':''}>${t}</a>`).join('')+(mode==='site'&&(CFG.bookingUrl||CFG.contactEmail)?`<a href="/#contact" class="nav-cta">Free store check</a>`:'');
+  $('#nav').innerHTML=`<nav class="nav" aria-label="Main">${VertaLogo(mode==='app')}<div class="nav-links">${links}</div><div class="nav-tools"><button class="icon-btn" id="theme" aria-label="Switch colour theme">${icon(isDark()?'sun':'moon')}</button><button class="icon-btn menu-btn" id="menuBtn" aria-expanded="false" aria-controls="menu" aria-label="Menu">${icon('menu')}</button></div><div class="menu" id="menu" data-open="false">${links}</div></nav>`;
   $('#theme').onclick=()=>{setTheme(isDark()?'light':'dark');$('#theme').innerHTML=icon(isDark()?'sun':'moon')};
   const mb=$('#menuBtn'),mn=$('#menu');mb.onclick=()=>{const o=mn.dataset.open!=='true';mn.dataset.open=o;mb.setAttribute('aria-expanded',o)};
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mn.dataset.open==='true'){mn.dataset.open=false;mb.setAttribute('aria-expanded',false);mb.focus()}});
 }
-function Footer(){
-  $('#foot').innerHTML=`<footer class="foot"><div class="page foot-grid"><div>${VertaLogo()}<p class="muted sm" style="margin-top:12px;max-width:40ch">Verta checks whether AI shopping assistants can find, understand and buy from an online store. The score is a working framework, not a certification.</p></div><div><h3>Product</h3><a href="/">Scanner</a><a href="/prospect.html">Prospect list</a><a href="/about.html">Methodology</a></div><div><h3>Version</h3><p class="muted sm">Scanner v0.1<br>Interface 2.0</p></div></div></footer>`;
+function Footer(mode='site'){
+  const col=mode==='app'?'<a href="/app/">Scanner</a><a href="/app/prospects">Prospects</a><a href="/about">Methodology</a>':'<a href="/#how">How it works</a><a href="/#faq">FAQ</a><a href="/about">Method</a>';
+  $('#foot').innerHTML=`<footer class="foot"><div class="page foot-grid"><div>${VertaLogo(mode==='app')}<p class="muted sm" style="margin-top:12px;max-width:40ch">Verta checks whether AI shopping assistants can find, understand and buy from an online store. The score is a working framework, not a certification.</p></div><div><h3>${mode==='app'?'Team tool':'Verta'}</h3>${col}</div><div><h3>Version</h3><p class="muted sm">Scanner v0.1<br>Interface 2.0</p></div></div></footer>`;
 }
 
 /* ---------- messages & text ---------- */
@@ -136,7 +138,7 @@ async function copyText(t,toast){
   const say=m=>{if(toast){toast.textContent=m;setTimeout(()=>toast.textContent='',2500)}};
   try{await navigator.clipboard.writeText(t);say('Copied to clipboard.')}catch(e){say('Copy failed. Select the text and copy it by hand.')}
 }
-function ReportView(r){
+function ReportView(r,client=false){
   const first=r.layers.reduce((m,l,i)=>(l.score!=null&&(m<0||l.score<r.layers[m].score))?i:m,-1);
   const fixes=topChecks(r);
   return `<div class="report">${ReportHeader(r)}
@@ -145,23 +147,32 @@ function ReportView(r){
   <section aria-labelledby="fixH"><h2 class="sec-h" id="fixH" style="margin-bottom:16px">Fix these first</h2><div class="issues">${fixes.map(PriorityIssueCard).join('')||'<div class="card muted">Nothing urgent found.</div>'}</div></section>
   ${ctaHtml(r)}
   <section aria-labelledby="allH"><h2 class="sec-h" id="allH" style="margin-bottom:16px">Every check, by layer</h2>${r.layers.map((l,i)=>FindingAccordion(l,i===first,i)).join('')}</section>
-  <div id="outreach">${OutreachPanel(r)}</div>
-  <div class="row noprint"><button class="btn secondary" id="cr">Copy report</button><button class="btn secondary" id="sh">${icon('link')} Copy share link</button><button class="btn secondary" id="pr">Print or save as PDF</button><button class="btn secondary" id="again">Scan another store</button><span class="toast" id="rtoast" role="status"></span></div></div>`;
+  ${client?'':`<div id="outreach">${OutreachPanel(r)}</div>`}
+  <div class="row noprint"><button class="btn secondary" id="cr">Copy report text</button>${client?'':`<button class="btn secondary" id="sh">${icon('link')} Copy client link</button>`}<button class="btn secondary" id="pr">Print or save as PDF</button>${client?'':`<button class="btn secondary" id="again">Scan another store</button>`}<span class="toast" id="rtoast" role="status"></span></div></div>`;
 }
-function mountReport(r,out){
-  out.innerHTML=ReportView(r);
+function mountReport(r,out,client=false){
+  out.innerHTML=ReportView(r,client);
   $$('.acc-btn',out).forEach(b=>b.onclick=()=>{const o=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',o);$('#'+b.getAttribute('aria-controls')).dataset.open=o});
-  bindOutreach($('#outreach',out),r);
+  if(!client)bindOutreach($('#outreach',out),r);
   const t=$('#rtoast',out);
   $('#cr',out).onclick=()=>copyText(reportText(r),t);$('#pr',out).onclick=()=>window.print();
-  $('#sh',out).onclick=()=>{try{copyText(location.origin+'/#r='+encodeReport(r),t)}catch(e){t.textContent='Could not build the link.'}};
-  $('#again',out).onclick=()=>{out.innerHTML='';document.body.classList.remove('has-report');history.replaceState(null,'',location.pathname);const u=$('#u');if(u){u.focus();window.scrollTo({top:0,behavior:'smooth'})}};
+  if(!client){$('#sh',out).onclick=()=>{try{copyText(location.origin+'/report#r='+encodeReport(r),t)}catch(e){t.textContent='Could not build the link.'}};
+  $('#again',out).onclick=()=>{out.innerHTML='';document.body.classList.remove('has-report');const u=$('#u');if(u){u.focus();window.scrollTo({top:0,behavior:'smooth'})}}}
   requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.track i',out).forEach(i=>i.style.width=i.dataset.w+'%')));
   const sn=$('.score-num[data-count]',out);
   if(sn&&!REDUCED){const target=+sn.dataset.count,t0=performance.now(),small=sn.querySelector('small');const tick=now=>{const p=Math.min(1,(now-t0)/800),v=Math.round(target*(1-Math.pow(1-p,3)));sn.firstChild.nodeValue=v;if(p<1)requestAnimationFrame(tick)};requestAnimationFrame(tick)}
   document.body.classList.add('has-report');
 }
 
+/* ---------- team access key (the scanner API is closed without it) ---------- */
+const getKey=()=>safe(()=>localStorage.getItem('verta_key'))||'';
+const setKey=k=>safe(()=>localStorage.setItem('verta_key',k));
+const clearKey=()=>safe(()=>localStorage.removeItem('verta_key'));
+function Gate(mount,onReady,msg){
+  if(getKey()&&!msg){onReady();return}
+  mount.innerHTML=`<section class="card" style="max-width:460px;margin:64px auto"><h1 class="card-h" style="font-size:22px">Team access</h1><p class="muted" style="margin:6px 0 16px">This is Verta's internal tool. Enter the team access key to continue.</p>${msg?`<p class="field-err" role="alert">${esc(msg)}</p>`:''}<form id="gf"><label class="sr" for="gk">Access key</label><input class="field" id="gk" type="password" autocomplete="current-password" style="margin-bottom:12px"><button class="btn" type="submit">Continue</button></form></section>`;
+  $('#gk').focus();$('#gf').onsubmit=e=>{e.preventDefault();const v=$('#gk').value.trim();if(!v)return;setKey(v);mount.innerHTML='';onReady()};
+}
 /* ---------- scan flow ---------- */
 function normalizeUrl(v){
   v=(v||'').trim();if(!v)return {err:'Enter your store address to start.'};
@@ -186,7 +197,7 @@ function ScanError(msg,status){const c=classifyError(msg,status);return `<div cl
 async function scanUrl(url,ms=40000,signal){
   const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms);
   if(signal)signal.addEventListener('abort',()=>ctl.abort());
-  try{const res=await fetch('/api/scan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url}),signal:ctl.signal});
-    const d=await res.json().catch(()=>({error:'The scanner returned an unreadable answer.'}));if(!res.ok){const e=new Error(d.error||'Scan failed.');e.status=res.status;throw e}return d}
+  try{const res=await fetch('/api/scan',{method:'POST',headers:{'content-type':'application/json','x-verta-key':getKey()},body:JSON.stringify({url}),signal:ctl.signal});
+    const d=await res.json().catch(()=>({error:'The scanner returned an unreadable answer.'}));if(res.status===401){clearKey()}if(!res.ok){const e=new Error(d.error||'Scan failed.');e.status=res.status;throw e}return d}
   catch(e){if(e.name==='AbortError'){const x=new Error(signal&&signal.aborted?'Scan cancelled.':'The scan took too long.');x.cancelled=!!(signal&&signal.aborted);throw x}throw e}finally{clearTimeout(to)}
 }
