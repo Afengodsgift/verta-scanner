@@ -9,6 +9,7 @@ const serve = make => new Promise(r => { const s = http.createServer(); s.listen
   await t('robots: specific agent beats *', () => { const r = P.parseRobots('User-agent: *\nDisallow: /\nUser-agent: GPTBot\nAllow: /'); assert(P.canFetch(r, 'GPTBot', '/x')); assert(!P.canFetch(r, 'Other', '/x')); });
   await t('robots: longest match, allow wins tie', () => { const r = P.parseRobots('User-agent: *\nDisallow: /a\nAllow: /a/b'); assert(P.canFetch(r, 'x', '/a/b/c')); assert(!P.canFetch(r, 'x', '/a/z')); });
   await t('price parsing', () => { assert.strictEqual(P.parsePrice('1.234,50'), 1234.5); assert.strictEqual(P.parsePrice('$1,234.50'), 1234.5); assert.strictEqual(P.parsePrice('18500.00'), 18500); });
+  await t('price inside priceSpecification (WooCommerce style) is lifted', () => { const o = P.offersOf({ offers: { '@type': 'Offer', url: 'x', priceSpecification: { '@type': 'PriceSpecification', price: '25.00', priceCurrency: 'USD' } } })[0]; assert.strictEqual(o.price, '25.00'); assert.strictEqual(o.priceCurrency, 'USD'); });
   await t('price in text', () => { assert(P.priceInText('Now ₦18,500.00 only', 18500)); assert(!P.priceInText('Item 118500', 18500)); });
   await t('jsonld tolerates trailing comma', () => { const $ = P.load('<script type="application/ld+json">{"@type":"Product","name":"A",}</script>'); assert.strictEqual(P.products($).items.length, 1); });
   await t('sitemap parse', () => { const s = P.parseSitemap('<urlset><url><loc>http://a/p/1</loc></url></urlset>'); assert.deepStrictEqual(s.urls, ['http://a/p/1']); });
