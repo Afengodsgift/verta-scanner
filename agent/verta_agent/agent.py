@@ -14,8 +14,12 @@ def run_mission(m, ctl, brain, store, shared, host):
     res = dict(mission_id=m["mission_id"], type=m["type"], dimension=m["dimension"], objective=m["objective"],
                status="RUNNING", failure_code=None, evidence_ids=[], action_errors=0, steps=0)
     # entry point
-    if m["type"] == "discover_product":
+    if m["type"] in ("discover_product", "login"):
         ctl.execute({"action": "goto", "url": shared["entry"]})
+    elif m["type"] == "payment_test":
+        if not shared.get("checkout_url"):
+            res.update(status="SKIPPED", summary="Dependency not met: checkout was not reached."); return res
+        ctl.execute({"action": "goto", "url": shared["checkout_url"]})
     elif shared.get("product_url"):
         ctl.execute({"action": "goto", "url": shared["product_url"]}) if m["type"] not in ("reach_checkout",) else None
     else:
@@ -39,7 +43,7 @@ def run_mission(m, ctl, brain, store, shared, host):
         if action["action"] == "finish":
             store.log(m["mission_id"], step, {"action": action, "brain": brain.name}); break
         el = ctl.element(obs, action.get("id")) if "id" in action else None
-        ctx = dict(allowed_host=host, step=step, max_steps=budget["max_steps"],
+        ctx = dict(policy=shared.get("policy"), mission_type=m["type"], allowed_host=host, step=step, max_steps=budget["max_steps"],
                    element_text=(el or {}).get("text", ""), field=(el or {}).get("name", "") + (el or {}).get("placeholder", ""))
         try:
             ok, why = safety.validate(action, ctx)
@@ -51,7 +55,8 @@ def run_mission(m, ctl, brain, store, shared, host):
             store.log(m["mission_id"], step, {"action": action, "rejected": why}); hist.append({"action": action}); continue
         r = ctl.execute(action)
         if not r["ok"]: res["action_errors"] += 1
-        store.log(m["mission_id"], step, {"action": action, "result": r, "url": ctl.url, "brain": brain.name})
+        logged = dict(action, value="[redacted]") if action.get("secret") or (action["action"] == "fill" and m["type"] != "discover_product") else action
+        store.log(m["mission_id"], step, {"action": logged, "result": r, "url": ctl.url, "brain": brain.name})
         hist.append({"action": action})
         obs = ctl.observe()
     if res["status"] == "TIMEOUT":
@@ -60,19 +65,20 @@ def run_mission(m, ctl, brain, store, shared, host):
     res.update(ev)
     if m["type"] == "discover_product" and ev["status"] == "SUCCESS":
         shared["product_url"] = extracts[0]["data"]["url"]; shared["product_title"] = extracts[0]["data"].get("title", "")
+    if m["type"] == "reach_checkout" and ev["status"] == "SUCCESS": shared["checkout_url"] = ctl.url
     res.setdefault("summary", ev["summary"])
     if res["failure_code"] and not res["evidence_ids"]:
         res["evidence_ids"].append(store.add(m["mission_id"], ctl.url, "no_conclusion", "Mission ended without conclusive observation", confidence="LOW", kind="note"))
     return res
 
 
-def run(site_url, missions, outdir, brain=None, headless=True):
+def run(site_url, missions, outdir, brain=None, headless=True, creds=None, test_profile=None, policy=None):
     brain = brain or HeuristicBrain()
     u = urlparse(site_url)
     host = u.hostname
     store = EvidenceStore(outdir)
     ctl = Controller(headless=headless)
-    shared = {"entry": site_url}
+    shared = {"entry": site_url, "creds": creds, "test_profile": test_profile, "policy": policy or {}}
     results = []
     started = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     try:

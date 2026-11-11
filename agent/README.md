@@ -16,8 +16,17 @@ python3 -m unittest tests.test_agent                # offline, local fixture sto
 ```
 Output: `report.json` (canonical), `report.md`, `report.html`, `evidence.json`, `trace.json`, `screenshots/`.
 
-## Safety
-Validator allows only goto/click/fill/press/extract/wait/finish; same-host only; any click on pay/place-order controls or any fill of payment/credential fields ends the mission with `SAFETY_STOP`. No real orders or payments, ever. The agent stops at the checkout page.
+## Authorized mode: login + test-card checkout
+Off by default. For merchants who have agreed to it (paid audit, written permission):
+```
+export VERTA_LOGIN_USER=... VERTA_LOGIN_PASSWORD=...        # test account the merchant gave you
+python3 -m verta_agent https://shop.example --query "..." --login \
+  --payment-test --authorization-ref AUTH-2026-001 --authorized-hosts shop.example --test-profile profile.json
+```
+Gates (all required, or the run refuses): authorization reference, host on the allow-list, card is a known processor TEST number (4242…, 4000 0000 0000 0002 etc.). A decline counts as success (the checkout pipeline works end to end); an accepted test card is flagged so the order can be cleaned up. Credentials and card data are never written to evidence or trace. Never run this on a store that has not agreed.
+
+## Safety (default)
+Validator allows only goto/click/fill/press/extract/wait/finish; same-host only; any click on pay/place-order controls or any fill of payment/credential fields ends the mission with `SAFETY_STOP`. In default mode the agent stops at the checkout page and never touches payment or password fields.
 
 ## Honest status
 - Heuristic brain is tested on fixtures only; LLM brain is untested without an API key.

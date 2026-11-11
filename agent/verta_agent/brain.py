@@ -43,6 +43,14 @@ def find_attr(obs, attr):
     return None, "absent"
 
 
+DECLINE = re.compile(r"declin|card was|payment (failed|error|could not)|invalid (card|number)|your card|card number is (incorrect|invalid)|insufficient", re.I)
+ACCEPT = re.compile(r"order (confirmed|received|placed|number)|thank you for your (order|purchase)", re.I)
+LOGINLINK = re.compile(r"log ?in|sign ?in|my account", re.I)
+FIELD_MAP = [("email", r"email"), ("first", r"first.?name|given"), ("last", r"last.?name|family|surname"), ("name", r"full.?name|^name|cardholder"),
+             ("address", r"address|street"), ("city", r"city|town"), ("postal", r"zip|postal|post.?code"), ("phone", r"phone|tel"),
+             ("card", r"card.?number|cardnumber|cc-number|\bcard\b"), ("exp", r"expir|exp"), ("cvc", r"cvc|cvv|security")]
+
+
 class HeuristicBrain:
     name = "heuristic-v0.1"
 
@@ -54,6 +62,54 @@ class HeuristicBrain:
     # --- helpers
     def _did(self, hist, kind):
         return any(h["action"].get("action") == kind or h["action"].get("tag") == kind for h in hist)
+
+    def _login(self, m, obs, hist, shared, step):
+        creds = shared.get("creds") or {}
+        pw = next((e for e in obs["elements"] if e["tag"] == "input" and e["type"] == "password"), None)
+        fills = [h["action"] for h in hist if h["action"].get("action") == "fill"]
+        clicks = sum(1 for h in hist if h["action"].get("action") == "click")
+        if pw and len(fills) < 2:
+            if not fills:
+                u = next((e for e in obs["elements"] if e["tag"] == "input" and (e["type"] in ("email", "text", "") ) and re.search(r"user|email|login", e["name"] + e["placeholder"] + e["type"], re.I)), None)
+                if u: return {"action": "fill", "id": u["id"], "value": creds.get("user", ""), "secret": True}
+                return {"action": "extract", "tag": "login", "data": {"logged_in": False, "reason": "no username field found"}}
+            return {"action": "fill", "id": pw["id"], "value": creds.get("password", ""), "secret": True}
+        acts = [h["action"].get("action") for h in hist]
+        submitted = False
+        if len(fills) == 2:
+            last_fill = max(i for i, a in enumerate(acts) if a == "fill")
+            submitted = any(a in ("click", "press") for a in acts[last_fill + 1:])
+        if pw and len(fills) == 2 and not submitted:
+            b = next((e for e in obs["elements"] if e["tag"] in ("button", "input") and re.search(r"log ?in|sign ?in|submit", e["text"], re.I)), None)
+            if b: return {"action": "click", "id": b["id"]}
+            return {"action": "press", "key": "Enter"}
+        if not pw and not fills and clicks < 1:
+            l = next((e for e in obs["elements"] if e["tag"] == "a" and LOGINLINK.search(e["text"] + e["href"])), None)
+            if l: return {"action": "click", "id": l["id"]}
+            return {"action": "extract", "tag": "login", "data": {"logged_in": False, "reason": "no login link or form found"}}
+        if len(fills) == 2:
+            still = bool(pw)
+            ok = (not still) and bool(re.search(r"log ?out|sign ?out|my account|welcome|hello", obs["text"], re.I)) and not re.search(r"invalid|incorrect|wrong|error", obs["text"], re.I)
+            return {"action": "extract", "tag": "login", "data": {"logged_in": ok, "reason": None if ok else "still on login form or error shown"}}
+        return {"action": "extract", "tag": "login", "data": {"logged_in": False, "reason": "unexpected page"}}
+
+    def _payment_test(self, m, obs, hist, shared, step):
+        prof = shared.get("test_profile") or {}
+        done = {h["action"].get("id") for h in hist if h["action"].get("action") == "fill"}
+        if any(h["action"].get("action") == "click" for h in hist):
+            if not any(h["action"].get("action") == "wait" for h in hist):
+                return {"action": "wait", "ms": 2500}
+            o = "declined" if DECLINE.search(obs["text"]) else "accepted" if ACCEPT.search(obs["text"]) else "unknown"
+            return {"action": "extract", "tag": "payment", "data": {"outcome": o, "excerpt": obs["text"][:200]}}
+        for e in obs["elements"]:
+            if e["tag"] != "input" or e["id"] in done or e["type"] in ("hidden", "submit", "checkbox", "radio"): continue
+            key = e["name"] + " " + e["placeholder"]
+            for k, rx in FIELD_MAP:
+                if re.search(rx, key, re.I) and prof.get(k):
+                    return {"action": "fill", "id": e["id"], "value": prof[k], "secret": True}
+        b = next((e for e in obs["elements"] if e["tag"] in ("button", "input") and re.search(r"place order|pay|complete|submit", e["text"], re.I)), None)
+        if not b: return {"action": "extract", "tag": "payment", "data": {"outcome": "unknown", "excerpt": "no submit control found"}}
+        return {"action": "click", "id": b["id"]}
 
     def _discover_product(self, m, obs, hist, shared, step):
         q = m["inputs"]["query"]

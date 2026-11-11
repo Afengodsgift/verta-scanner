@@ -6,12 +6,20 @@ def evaluate(mission, extracts):
     t = mission["type"]
     ex = next((e for e in extracts if e["tag"] == {
         "discover_product": "product_page", "extract_attribute": "attribute", "get_price": "price",
-        "check_inventory": "inventory", "add_to_cart": "cart", "reach_checkout": "checkout"}[t]), None)
+        "check_inventory": "inventory", "add_to_cart": "cart", "reach_checkout": "checkout",
+        "login": "login", "payment_test": "payment"}[t]), None)
     if ex is None:
         return dict(status="FAILED", failure_code="PRODUCT_NOT_DISCOVERABLE" if t == "discover_product" else "TIMEOUT",
                     confidence="MEDIUM", summary="No conclusive observation was produced.", root_cause=None)
     d = ex["data"]
     R = lambda s, c=None, conf="HIGH", sm="", rc=None: dict(status=s, failure_code=c, confidence=conf, summary=sm, root_cause=rc)
+    if t == "login":
+        return R("SUCCESS", sm="Logged in with test account.") if d.get("logged_in") else R("FAILED", "LOGIN_FAILED", sm="Login did not produce an authenticated session.", rc=d.get("reason"))
+    if t == "payment_test":
+        o = d.get("outcome")
+        if o == "declined": return R("SUCCESS", sm="Test card was submitted and the store returned an explicit decline: checkout pipeline works end to end.")
+        if o == "accepted": return R("SUCCESS", sm="Test card was ACCEPTED and the store showed an order confirmation (store is in test mode, or an order was created: clean it up).")
+        return R("FAILED", "PAYMENT_NOT_PROCESSED", sm="Submitted checkout but got no clear success or decline.", rc=d.get("excerpt"))
     if t == "discover_product":
         return R("SUCCESS", sm=f"Reached product page: {d.get('title') or d.get('url')}")
     if t == "extract_attribute":

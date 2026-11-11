@@ -1,7 +1,7 @@
 """Local fixture B2B stores. variants: good, pdf (quote-only, spec in PDF), gated (login price, captcha checkout)."""
 import threading, json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote_plus
 
 PRODUCT = dict(slug="ss-ball-valve-1in", name="Stainless Steel Ball Valve 1 inch", rating="1000 PSI", price="84.50")
 
@@ -21,8 +21,22 @@ class H(BaseHTTPRequestHandler):
         for k, v in (headers or {}).items(): self.send_header(k, v)
         self.end_headers(); self.wfile.write(b)
 
+    logged = set()
+    orders = []
+
     def do_POST(self):
         v, path = self.route()
+        n = int(self.headers.get("Content-Length") or 0)
+        form = {k: x[0] for k, x in parse_qs(self.rfile.read(n).decode()).items()}
+        if path == "/login":
+            if form.get("password") == "s3cret" and form.get("email") == "buyer@test.dev":
+                H.logged.add(v); return self.send("", 303, headers={"Location": f"/{v}/"})
+            return self.send(page(f'<h1>Log in</h1><p>Invalid email or password</p><form method="post" action="/{v}/login"><input type="email" name="email"><input type="password" name="password"><button>Log in</button></form>').replace("{ld}", ""))
+        if path == "/checkout" and v == "pay":
+            H.orders.append(form)
+            if form.get("card_number") == "4242424242424242":
+                return self.send(page("<h1>Thank you for your order</h1><p>Order number 1001</p>").replace("{ld}", ""))
+            return self.send(page("<h1>Checkout</h1><p>Your card was declined.</p>").replace("{ld}", ""))
         if path == "/cart/add":
             H.cart[v] = PRODUCT["name"]
             self.send("", 303, headers={"Location": f"/{v}/cart"})
@@ -34,9 +48,10 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path); v, path = self.route()
-        if v not in ("good", "pdf", "gated"): return self.send("nf", 404)
+        if v not in ("good", "pdf", "gated", "pay"): return self.send("nf", 404)
         P = f"/{v}"
-        nav = f'<header><a href="{P}/">Home</a> <a href="{P}/cart">Cart</a></header>'
+        acct = f'<a href="{P}/logout">Log out</a>' if v in H.logged else f'<a href="{P}/login">Log in</a>'
+        nav = f'<header><a href="{P}/">Home</a> <a href="{P}/cart">Cart</a> {acct}</header>'
         if path == "/":
             return self.send(page(nav + f'<form action="{P}/search" method="get"><input type="search" name="q" placeholder="Search products"><button>Search</button></form><h1>Industrial Supply Co</h1>').replace("{ld}", ""))
         if path == "/search":
@@ -47,7 +62,7 @@ class H(BaseHTTPRequestHandler):
         if path.startswith("/products/"):
             if path.endswith("other"): return self.send(page(nav + "<h1>Other Item</h1>").replace("{ld}", ""))
             ld = ""; extra = ""
-            if v == "good":
+            if v in ("good", "pay"):
                 ld = '<script type="application/ld+json">' + json.dumps({"@context": "https://schema.org", "@type": "Product", "name": PRODUCT["name"],
                     "additionalProperty": [{"@type": "PropertyValue", "name": "Pressure rating", "value": PRODUCT["rating"]}],
                     "offers": {"@type": "Offer", "price": PRODUCT["price"], "priceCurrency": "USD", "availability": "https://schema.org/InStock"}}) + "</script>"
@@ -62,7 +77,13 @@ class H(BaseHTTPRequestHandler):
             item = H.cart.get(v)
             body = nav + "<h1>Your cart</h1>" + (f"<p>{item} x1</p><a href='{P}/checkout'>Proceed to checkout</a>" if item else "<p>Your cart is empty</p>")
             return self.send(page(body).replace("{ld}", ""))
+        if path == "/login":
+            return self.send(page(nav + f'<h1>Log in</h1><form method="post" action="{P}/login"><input type="email" name="email" placeholder="Email"><input type="password" name="password" placeholder="Password"><button>Log in</button></form>').replace("{ld}", ""))
         if path == "/checkout":
+            if v == "pay" and v not in H.logged:
+                return self.send("", 303, headers={"Location": f"{P}/login"})
+            if v == "pay":
+                return self.send(page(nav + f'<h1>Checkout</h1><form method="post" action="{P}/checkout"><input name="email" placeholder="Email"><input name="first_name" placeholder="First name"><input name="card_number" placeholder="Card number"><input name="exp" placeholder="MM/YY"><input name="cvc" placeholder="CVC"><button>Place order</button></form>').replace("{ld}", ""))
             if v == "gated":
                 return self.send(page(nav + "<h1>Checkout</h1><p>Please verify you are human</p><div class='h-captcha'></div>").replace("{ld}", ""))
             return self.send(page(nav + '<h1>Checkout</h1><input name="email" placeholder="Email"><input name="card_number" placeholder="Card number"><button>Place order</button>').replace("{ld}", ""))
