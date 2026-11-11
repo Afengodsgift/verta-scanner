@@ -148,5 +148,63 @@ class TAuth(unittest.TestCase):
         self.assertFalse(a("nalgene.com", ["shop.com"], "AUTH-2026-001", "4242424242424242")[0])
 
 
+import re, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from verta_agent.brain import LLMBrain
+
+
+def mock_llm(mode="script"):
+    """Fake Anthropic API: checks request shape and answers from a script keyed on the prompt. Tests plumbing, not intelligence."""
+    seen = []
+
+    class Hd(BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            seen.append(body)
+            if mode == "down":
+                self.send_response(500); self.end_headers(); return
+            u = body["messages"][0]["content"]
+            def eid(rx):
+                m = re.search(r"\[(\d+)\] " + rx, u); return int(m.group(1)) if m else None
+            if "MISSION: Find a product" in u:
+                if "Search products" in u and "fill" not in u: a = {"reasoning": "use search", "action": "fill", "id": eid(r"input/search"), "value": "stainless ball valve"}
+                elif '"press"' not in u and "No results" not in u and "Results for" not in u: a = {"reasoning": "submit", "action": "press", "key": "Enter"}
+                elif "Results for" in u and "Add to cart" not in u: a = {"reasoning": "open top hit", "action": "click", "id": eid(r'a "Stainless Steel Ball Valve')}
+                else: a = {"reasoning": "this is the product page", "action": "extract", "tag": "product_page", "data": {"url": re.search(r"URL: (\S+)", u).group(1), "title": "Stainless Steel Ball Valve 1 inch"}}
+            else:
+                a = {"reasoning": "price in JSON-LD", "action": "extract", "tag": "price", "data": {"price": "84.50", "currency": "USD", "source": "structured", "gated": None}}
+            out = json.dumps({"content": [{"type": "tool_use", "id": "t", "name": "act", "input": a}]}).encode()
+            self.send_response(200); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(out))); self.end_headers(); self.wfile.write(out)
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), Hd)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, seen, f"http://127.0.0.1:{srv.server_address[1]}"
+
+
+class TLLM(unittest.TestCase):
+    def setUp(self): os.environ["ANTHROPIC_API_KEY"] = "test-key"
+
+    def test_llm_brain_drives_missions_and_never_sees_secrets(self):
+        srv, seen, base = mock_llm()
+        d = tempfile.mkdtemp()
+        ms = [m for m in M.default_suite("stainless ball valve") if m["type"] in ("discover_product", "get_price")]
+        data, store = run(f"{BASE}/good/", ms, d, brain=LLMBrain(base_url=base, fallback=False), creds=dict(user="buyer@test.dev", password="s3cret"))
+        self.assertEqual([r["status"] for r in data["results"]], ["SUCCESS", "SUCCESS"], data["results"])
+        r = seen[0]
+        self.assertEqual(r["tool_choice"], {"type": "tool", "name": "act"}); self.assertEqual(r["tools"][0]["name"], "act")
+        self.assertNotIn("s3cret", json.dumps(seen)); self.assertTrue(any("reasoning" in str(t["action"]) for t in store.trace))
+        self.assertTrue(data["brain"].startswith("llm:"))
+        srv.shutdown()
+
+    def test_llm_outage_falls_back_to_heuristic_and_is_flagged(self):
+        srv, seen, base = mock_llm("down")
+        d = tempfile.mkdtemp(); b = LLMBrain(base_url=base)
+        ms = [m for m in M.default_suite("stainless ball valve") if m["type"] == "discover_product"]
+        data, store = run(f"{BASE}/good/", ms, d, brain=b)
+        self.assertEqual(data["results"][0]["status"], "SUCCESS"); self.assertGreater(b.fell_back, 0)
+        self.assertTrue(any("heuristic fallback" in json.dumps(t) for t in store.trace))
+        srv.shutdown()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

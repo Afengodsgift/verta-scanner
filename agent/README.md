@@ -11,7 +11,7 @@ Mission → Brain → Action Validator → Playwright controller → Observer �
 ```
 pip install playwright --break-system-packages && playwright install chromium
 python3 -m verta_agent https://store.example --query "stainless ball valve" --attribute "pressure rating" --out run1
-python3 -m verta_agent URL --query "..." --llm      # Claude brain (needs ANTHROPIC_API_KEY; falls back to heuristic per step on error)
+python3 -m verta_agent URL --query "..." --llm      # Claude brain via forced tool use (needs ANTHROPIC_API_KEY; VERTA_MODEL to choose; falls back to heuristic per step on error and says so in the trace)
 python3 -m unittest tests.test_agent                # offline, local fixture stores
 ```
 Output: `report.json` (canonical), `report.md`, `report.html`, `evidence.json`, `trace.json`, `screenshots/`.
@@ -29,7 +29,7 @@ Gates (all required, or the run refuses): authorization reference, host on the a
 Validator allows only goto/click/fill/press/extract/wait/finish; same-host only; any click on pay/place-order controls or any fill of payment/credential fields ends the mission with `SAFETY_STOP`. In default mode the agent stops at the checkout page and never touches payment or password fields.
 
 ## Honest status
-- Heuristic brain is tested on fixtures only; LLM brain is untested without an API key.
+- The default brain is keyword heuristics: fine for clean stores, brittle on real ones. The LLM brain is the real product: it sees a compact page view, picks actions by element id, explains each step (stored in trace), and never sees credentials or card values. Its plumbing is tested against a mock API; its actual judgment on real sites is NOT yet tested (no API key in the build sandbox). Evaluate it on real stores before selling it.
 - Not assessed yet (excluded from overall, stated in report): Search & Navigation, Quoting/RFQ, Authorization/Security.
 - Weights, severity caps (P0 → dimension max 40) and the 70/15/15 mission formula are v0.1 hypotheses.
 - Not yet validated on real sites (sandbox has no general internet).

@@ -42,6 +42,10 @@ def run_mission(m, ctl, brain, store, shared, host):
             break
         if action["action"] == "finish":
             store.log(m["mission_id"], step, {"action": action, "brain": brain.name}); break
+        if action.get("action") == "fill" and action.get("fill_from"):  # resolve secrets locally; the model never sees them
+            k = action["fill_from"]
+            src = {"login_user": (shared.get("creds") or {}).get("user"), "login_password": (shared.get("creds") or {}).get("password")}.get(k) or (shared.get("test_profile") or {}).get(k)
+            action = dict(action, value=src or "", secret=True)
         el = ctl.element(obs, action.get("id")) if "id" in action else None
         ctx = dict(policy=shared.get("policy"), mission_type=m["type"], allowed_host=host, step=step, max_steps=budget["max_steps"],
                    element_text=(el or {}).get("text", ""), field=(el or {}).get("name", "") + (el or {}).get("placeholder", ""))
@@ -52,7 +56,7 @@ def run_mission(m, ctl, brain, store, shared, host):
             res.update(status="SAFETY_STOP", summary=str(e)); res["evidence_ids"].append(eid); return res
         if not ok:
             res["action_errors"] += 1
-            store.log(m["mission_id"], step, {"action": action, "rejected": why}); hist.append({"action": action}); continue
+            store.log(m["mission_id"], step, {"action": dict(action, value="[redacted]") if action.get("secret") else action, "rejected": why}); hist.append({"action": action}); continue
         r = ctl.execute(action)
         if not r["ok"]: res["action_errors"] += 1
         logged = dict(action, value="[redacted]") if action.get("secret") or (action["action"] == "fill" and m["type"] != "discover_product") else action

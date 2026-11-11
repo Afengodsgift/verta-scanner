@@ -197,31 +197,78 @@ class HeuristicBrain:
         return {"action": "extract", "tag": "checkout", "data": {"reached": False, "blocker": "navigation"}}
 
 
-class LLMBrain:
-    """Claude-driven brain. Same interface. Not exercised in offline tests."""
-    name = "llm"
+SHAPES = {
+    "product_page": '{"url": page url, "title": product name}  (only when this really is ONE product detail page)',
+    "attribute": '{"attribute": name, "value": string or null, "source": "structured"|"text"|"pdf_only"|"absent"}  (pdf_only = the value is only reachable via a linked PDF/document)',
+    "price": '{"price": string or null, "currency": string or null, "source": "structured"|"text"|"none", "gated": the exact phrase if price is hidden behind login/quote else null}',
+    "inventory": '{"state": e.g. InStock/OutOfStock/"ships in 3 days" or null, "source": "structured"|"text"|"none"}',
+    "cart": '{"added": true|false, "reason": short, "quote_only": true|false}  (added=true only if the cart page/mini-cart actually shows the product)',
+    "checkout": '{"reached": true|false, "blocker": "captcha"|"auth_required"|"navigation"|null, "form_fields": int}  (reached=true only on a page asking for contact/shipping/payment details)',
+    "login": '{"logged_in": true|false, "reason": short}',
+    "payment": '{"outcome": "declined"|"accepted"|"unknown", "excerpt": first 200 chars of the page message}',
+}
+TAG_FOR = {"discover_product": "product_page", "extract_attribute": "attribute", "get_price": "price", "check_inventory": "inventory",
+           "add_to_cart": "cart", "reach_checkout": "checkout", "login": "login", "payment_test": "payment"}
+FILL_KEYS = ["login_user", "login_password", "email", "first", "last", "name", "address", "city", "postal", "phone", "card", "exp", "cvc"]
+TOOL = {"name": "act", "description": "Perform exactly one browser action or report your conclusion with extract.",
+        "input_schema": {"type": "object", "properties": {
+            "reasoning": {"type": "string", "description": "One or two sentences: what you see and why this action."},
+            "action": {"type": "string", "enum": ["goto", "click", "fill", "press", "wait", "extract", "finish"]},
+            "id": {"type": "integer", "description": "Element id from the list (click/fill)."},
+            "url": {"type": "string"}, "key": {"type": "string"},
+            "fill_from": {"type": "string", "enum": FILL_KEYS, "description": "For fill: which stored value to type. You never see or choose the value itself."},
+            "value": {"type": "string", "description": "For fill of search boxes only: the text to type."},
+            "tag": {"type": "string", "enum": list(SHAPES)}, "data": {"type": "object"}},
+            "required": ["reasoning", "action"]}}
+SYSTEM = """You are the VERTA audit agent, acting like an AI procurement agent shopping on a store. Your job is to measure honestly how well the store works for an agent, not to make it look good.
+Rules: use only the listed element ids; one action per turn. Never invent values: report what the page actually shows. If something is not on the page, say so (null / absent). Prefer structured evidence (JSON-LD) over page text. Never enter payment or password data yourself: use fill_from. Never click anything that places an order or pays unless the mission is payment_test. When you have enough to answer the mission, call extract with the exact data shape. Failing honestly is correct; guessing is a defect."""
 
-    def __init__(self, model=None):
+
+def compact(obs, n_el=70, n_text=2200):
+    els = "\n".join(f'[{e["id"]}] {e["tag"]}{"/" + e["type"] if e["type"] else ""} "{e["text"][:70]}"' + (f' -> {e["href"][:90]}' if e["href"] else "") + (f' name={e["name"]}' if e["name"] else "") for e in obs["elements"][:n_el])
+    ld = []
+    for p in obs["product_ld"][:2]:
+        offers = p.get("offers"); offers = offers if isinstance(offers, list) else [offers] if offers else []
+        ld.append({"name": p.get("name"), "additionalProperty": p.get("additionalProperty"), "offers": [{k: o.get(k) for k in ("price", "priceCurrency", "availability")} for o in offers if isinstance(o, dict)][:3]})
+    return f"URL: {obs['url']}\nTitle: {obs['title']}\nProduct JSON-LD: {json.dumps(ld)[:900] if ld else 'none'}\nVisible text:\n{obs['text'][:n_text]}\n\nElements:\n{els}"
+
+
+class LLMBrain:
+    """Claude-driven brain via forced tool use. Same interface as HeuristicBrain.
+    Credentials/card values are never sent to the model (fill_from keys are resolved locally)."""
+
+    def __init__(self, model=None, base_url=None, fallback=True):
         self.key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.key:
             raise RuntimeError("ANTHROPIC_API_KEY not set")
-        self.model = model or os.environ.get("VERTA_MODEL", "claude-sonnet-4-5")
-        self.fallback = HeuristicBrain()
+        self.model = model or os.environ.get("VERTA_MODEL", "claude-sonnet-5-5")
+        self.base = (base_url or os.environ.get("ANTHROPIC_BASE_URL") or "https://api.anthropic.com").rstrip("/")
+        self.fallback = HeuristicBrain() if fallback else None
+        self.name = f"llm:{self.model}"
+        self.fell_back = 0
+
+    def _call(self, system, user):
+        body = json.dumps({"model": self.model, "max_tokens": 700, "system": system, "tools": [TOOL], "tool_choice": {"type": "tool", "name": "act"},
+                           "messages": [{"role": "user", "content": user}]}).encode()
+        req = urllib.request.Request(self.base + "/v1/messages", body, {"x-api-key": self.key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+        r = json.load(urllib.request.urlopen(req, timeout=40))
+        return next(b["input"] for b in r["content"] if b.get("type") == "tool_use")
 
     def next_action(self, mission, obs, hist, shared):
-        els = "\n".join(f'[{e["id"]}] {e["tag"]} "{e["text"]}" {e["href"]}' for e in obs["elements"][:80])
-        prompt = f"""You are a procurement agent auditing a store. Mission: {mission['objective']}. Inputs: {json.dumps(mission['inputs'])}.
-Page: {obs['url']}
-Visible text (truncated): {obs['text'][:2500]}
-Elements:\n{els}
-History: {json.dumps([h['action'] for h in hist][-6:])}
-Reply with ONE JSON action: {{"action":"goto|click|fill|press|extract|finish", ...}}.
-click/fill use "id". extract needs "tag" (one of product_page|attribute|price|inventory|cart|checkout) and "data" with the same keys a deterministic reader would produce. Never pay, never fill payment fields."""
-        body = json.dumps({"model": self.model, "max_tokens": 400, "messages": [{"role": "user", "content": prompt}]}).encode()
-        req = urllib.request.Request("https://api.anthropic.com/v1/messages", body, {"x-api-key": self.key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+        tag = TAG_FOR[mission["type"]]
+        done = "\n".join(f'{i+1}. {json.dumps({k: v for k, v in h["action"].items() if k != "value"})}' for i, h in enumerate(hist[-8:])) or "(none yet)"
+        user = (f"MISSION: {mission['objective']}\nInputs: {json.dumps(mission['inputs'])}\nSuccess criteria: {mission['success_criteria']}\n"
+                f"Mission type: {mission['type']}. When done, call extract with tag \"{tag}\" and data shaped as: {SHAPES[tag]}\n"
+                f"Step {len(hist)+1} of {mission['budget']['max_steps']}.\nActions so far:\n{done}\n\nCURRENT PAGE\n{compact(obs)}")
         try:
-            r = json.load(urllib.request.urlopen(req, timeout=30))
-            txt = r["content"][0]["text"]
-            return json.loads(re.search(r"\{.*\}", txt, re.S).group(0))
-        except Exception:
-            return self.fallback.next_action(mission, obs, hist, shared)
+            a = self._call(SYSTEM, user)
+            if a.get("action") == "extract":
+                a["tag"] = tag if a.get("tag") not in SHAPES else a["tag"]
+                a.setdefault("data", {})
+            return a
+        except Exception as e:
+            if not self.fallback: raise
+            self.fell_back += 1
+            a = self.fallback.next_action(mission, obs, hist, shared)
+            a["reasoning"] = f"[LLM unavailable: {str(e)[:80]}; heuristic fallback]"
+            return a
