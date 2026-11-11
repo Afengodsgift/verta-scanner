@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verta prospect list</title><meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"></head><body><div class="wrap">
+<header class="top"><a class="logo" href="/"><i></i>Verta</a><nav><a href="/">Single scan</a></nav></header>
+<h1 style="max-width:20ch">Find the stores that need you most</h1>
+<p class="lede">Paste up to 10 store addresses, one per line. The lowest scores with real, fixable problems are your best leads. Your list stays in this browser.</p>
+<section class="panel"><textarea id="list" aria-label="Store addresses" placeholder="store-one.com&#10;store-two.com" style="min-height:130px"></textarea>
+<div class="row"><button class="btn" id="run">Scan the list</button><button class="btn ghost" id="csv" disabled>Download CSV</button><span class="mut small" id="st" aria-live="polite" style="align-self:center"></span></div></section>
+<section class="panel tbl hide" id="tw"><table><thead><tr><th>Store</th><th>Score</th><th>Platform</th><th>Biggest problem</th><th>Critical</th><th>Status</th><th></th></tr></thead><tbody id="tb"></tbody></table></section>
+<section class="panel hide" id="mw"><b id="mt">Message</b><textarea id="msg" aria-label="Message" style="margin-top:10px"></textarea><div class="row"><button class="btn ghost" id="mc">Copy message</button><button class="btn ghost" id="mr">Open full report</button></div><p class="mut small" id="tip" aria-live="polite"></p></section>
+<footer>Ten scans at a time keeps you under the scanner's rate limit (12 per 10 minutes per person). Contact only businesses you could reasonably help, keep messages honest about what the free scan can and cannot see, and stop when someone says no.</footer>
+</div>
+<script src="/config.js"></script><script src="/app.js"></script>
+<script>
+const KEY='verta_prospects_v1';let rows=[];
+try{rows=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(rows.map(r=>({host:r.host,score:r.score,platform:r.platform,state:r.state,top:r.top,p0:r.p0,status:r.status,error:r.error,full:r.full}))))}catch(e){}};
+const STATUS=['New','Contacted','Replied','Call booked','Won','Passed'];
+function draw(){
+  $('#tw').classList.toggle('hide',!rows.length);$('#csv').disabled=!rows.length;
+  rows.sort((a,b)=>(a.score==null)-(b.score==null)||a.score-b.score);
+  $('#tb').innerHTML=rows.map((r,i)=>`<tr><td><b>${esc(r.host)}</b></td><td class="sc" style="color:${colFor(r.score)}">${r.score==null?'-':r.score}</td><td>${esc(r.platform||'')}</td><td>${r.error?`<span class="mut">${esc(r.error)}</span>`:esc(r.top||'')}</td><td>${r.p0??''}</td>
+  <td><select data-i="${i}" aria-label="Status for ${esc(r.host)}">${STATUS.map(s=>`<option${s===r.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${r.full?`<button class="btn ghost" data-m="${i}">Message</button>`:''}</td></tr>`).join('');
+  $('#tb').querySelectorAll('select').forEach(s=>s.onchange=()=>{rows[+s.dataset.i].status=s.value;save()});
+  $('#tb').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const r=rows[+b.dataset.m];$('#mw').classList.remove('hide');$('#mt').textContent='Message for '+r.host;$('#msg').value=emailMsg(r.full);$('#mr').onclick=()=>{const x=btoa(unescape(encodeURIComponent(JSON.stringify(r.full)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');open('/#r='+x,'_blank')};$('#mw').scrollIntoView({behavior:'smooth'})});
+}
+$('#mc').onclick=async()=>{try{await navigator.clipboard.writeText($('#msg').value);$('#tip').textContent='Copied.'}catch(e){$('#tip').textContent='Copy failed. Select the text and copy it by hand.'}};
+$('#run').onclick=async()=>{
+  const hosts=[...new Set($('#list').value.split(/\s+/).map(s=>s.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'')).filter(Boolean))].slice(0,10);
+  if(!hosts.length){$('#st').textContent='Paste at least one store address.';return}
+  $('#run').disabled=true;
+  for(let i=0;i<hosts.length;i++){
+    $('#st').textContent=`Scanning ${i+1} of ${hosts.length}: ${hosts[i]}`;
+    rows=rows.filter(r=>r.host!==hosts[i]);
+    try{const r=await scanUrl(hosts[i]);const t=topChecks(r)[0];
+      rows.push({host:hosts[i],score:r.score,platform:r.meta.platform,state:r.state.label,top:t?t.title:'None found',p0:r.counts.P0,status:'New',full:r})}
+    catch(e){rows.push({host:hosts[i],score:null,error:e.message,status:'New'})}
+    draw();save();
+  }
+  $('#st').textContent='Done. Lowest scores are at the top.';$('#run').disabled=false;
+};
+$('#csv').onclick=()=>{const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;const t=['host,score,platform,state,biggest_problem,critical,status',...rows.map(r=>[r.host,r.score,r.platform,r.state,r.top,r.p0,r.status].map(q).join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='verta-prospects.csv';a.click()};
+draw();
+</script></body></html>
