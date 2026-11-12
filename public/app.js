@@ -13,14 +13,14 @@ const P={check:'M5 13l4 4L19 7',alert:'M12 4l9 16H3zM12 10v4M12 17h.01',x:'M6 6l
 const icon=(n,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[n]||''}"/></svg>`;
 
 /* ---------- status model ---------- */
-const BANDS={ready:{k:'ready',label:'Ready',icon:'check'},compat:{k:'compat',label:'Compatible',icon:'minus'},fric:{k:'fric',label:'Friction',icon:'alert'},blind:{k:'blind',label:'Blind',icon:'x'},inc:{k:'inc',label:'Not tested',icon:'info'}};
+const BANDS={ready:{k:'ready',label:'Complete',icon:'check'},compat:{k:'compat',label:'Mostly complete',icon:'minus'},fric:{k:'fric',label:'Needs fixes',icon:'alert'},blind:{k:'blind',label:'Hidden',icon:'x'},inc:{k:'inc',label:'Not tested',icon:'info'}};
 const bandFor=s=>s==null?BANDS.inc:s>=80?BANDS.ready:s>=60?BANDS.compat:s>=40?BANDS.fric:BANDS.blind;
 const STATE_BAND={ready:BANDS.ready,compatible:BANDS.compat,friction:BANDS.fric,blind:BANDS.blind,inconclusive:BANDS.inc};
 const Badge=(b,text)=>`<span class="badge t-${b.k}">${icon(b.icon)}${esc(text||b.label)}</span>`;
 const SEV={P0:{k:'blind',label:'Critical',icon:'alert',cls:'p0'},P1:{k:'fric',label:'Important',icon:'alert',cls:'p1'},P2:{k:'compat',label:'Minor',icon:'info',cls:'p2'}};
 const CHK={pass:['ready','Pass','check'],warn:['compat','Needs work','minus'],fail:['blind','Failing','x'],unsure:['inc',"Couldn't tell",'info'],na:['inc','Not applicable','minus'],info:['inc','For your information','info']};
 const SHORT={discover:'Discoverability',semantic:'Meaning',infra:'Product data',inventory:'Stock',pricing:'Price',policies:'Policies',interact:'Pages',transact:'Checkout'};
-const DESC={discover:'Can agents find your store and its products?',semantic:'Can they understand what each product is?',infra:'Is the catalog readable as structured data?',inventory:'Can they tell what is in stock?',pricing:'Can they read price and currency?',policies:'Can they read shipping and returns rules?',interact:'Can they move around without a mouse and eyes?',transact:'Could an authorized agent reach a purchase?'};
+const DESC={discover:'Is your store and its products easy to find?',semantic:'Does each product have a clear name and description?',infra:'Is the product data structured so Google can read it?',inventory:'Does the data say what is in stock?',pricing:'Are price and currency in the data?',policies:'Are shipping and returns rules easy to find?',interact:'Do the pages work without a mouse?',transact:'Can a shopper get from product to checkout?'};
 const lname=l=>SHORT[l.id]||l.name, ldesc=l=>DESC[l.id]||l.question;
 
 /* ---------- theme, nav, footer ---------- */
@@ -38,7 +38,7 @@ function MainNavigation(active,mode='site'){
 }
 function Footer(mode='site'){
   const col=mode==='app'?'<a href="/app/">Scanner</a><a href="/app/prospects">Prospects</a><a href="/about">Methodology</a>':'<a href="/#how">How it works</a><a href="/#faq">FAQ</a><a href="/about">Method</a>';
-  $('#foot').innerHTML=`<footer class="foot"><div class="page foot-grid"><div>${VertaLogo(mode==='app')}<p class="muted sm" style="margin-top:12px;max-width:40ch">Verta checks whether AI shopping assistants can find, understand and buy from an online store. The score is a working framework, not a certification.</p></div><div><h3>${mode==='app'?'Team tool':'Verta'}</h3>${col}</div><div><h3>Version</h3><p class="muted sm">Scanner v0.1<br>Interface 2.0</p></div></div></footer>`;
+  $('#foot').innerHTML=`<footer class="foot"><div class="page foot-grid"><div>${VertaLogo(mode==='app')}<p class="muted sm" style="margin-top:12px;max-width:40ch">Verta finds and fixes the product data problems that keep online stores out of Google Shopping and AI search. The score is our own checklist, not a certification.</p></div><div><h3>${mode==='app'?'Team tool':'Verta'}</h3>${col}</div><div><h3>Version</h3><p class="muted sm">Scanner v0.1<br>Interface 2.0</p></div></div></footer>`;
 }
 
 /* ---------- messages & text ---------- */
@@ -49,9 +49,9 @@ function verdict(r){
   const ls=r.layers.map((l,i)=>({i,s:l.score})).filter(x=>x.s!=null);
   if(ls.length<2)return r.state.line;
   const hi=ls.reduce((a,b)=>b.s>a.s?b:a),lo=ls.reduce((a,b)=>b.s<a.s?b:a);
-  if(lo.s>=80)return 'An AI shopping assistant can find, read and buy from this store without trouble.';
-  if(hi.s-lo.s<12)return 'An AI shopping assistant gets partway: scores are fairly even, so no single layer is the problem. Work through the fixes below in order.';
-  return `An AI shopping assistant can ${CAN[hi.i]}, but may not ${CANT[lo.i]}.`;
+  if(lo.s>=80)return 'Google and AI shopping assistants can read the product data on this store without trouble.';
+  if(hi.s-lo.s<12)return 'Scores are fairly even, so no single area is the problem. Work through the fixes below in order.';
+  return `Google and AI assistants can ${CAN[hi.i]}, but may not ${CANT[lo.i]}.`;
 }
 const topChecks=r=>{const all=r.layers.flatMap(l=>l.checks);return r.top.map(id=>all.find(c=>c.id===id)).filter(Boolean)};
 function emailMsg(r){
@@ -64,7 +64,7 @@ function emailMsg(r){
 }
 function dmMsg(r){const t=topChecks(r)[0];return `Hi, quick note on ${r.meta.host}: ${t?t.evidence:'your product pages look fine to me'}${t&&t.fix?` Fix: ${t.fix.split('. ')[0].replace(/\.$/,'')}.`:''} I can send the short list of what I found, free.${CFG.senderName?' - '+CFG.senderName:''}`}
 function reportText(r){
-  let t=`Verta Readiness Report: ${r.meta.host}\nScore ${r.score}/100, ${r.state.label}. ${verdict(r)}\nConfidence: ${r.meta.confidence}. Platform: ${r.meta.platform}.\n\n`;
+  let t=`Verta Product Data Report: ${r.meta.host}\nScore ${r.score}/100, ${r.state.label}. ${verdict(r)}\nConfidence: ${r.meta.confidence}. Platform: ${r.meta.platform}.\n\n`;
   for(const l of r.layers){t+=`${l.name}: ${l.score==null?'not tested':l.score+'/100'}\n`;for(const c of l.checks)if(c.status==='fail'||c.status==='warn')t+=`  - [${c.sev}] ${c.title}: ${c.evidence} Fix: ${c.fix}\n`}
   return t+'\nVerta scores are a working framework, not a certification.';
 }
@@ -81,7 +81,7 @@ function ConfidenceIndicator(r){
 }
 function ReadinessScore(r){
   const b=STATE_BAND[r.state.key]||BANDS.inc;
-  return `<section class="card score" aria-labelledby="scoreH"><h2 class="sr" id="scoreH">Overall readiness</h2>
+  return `<section class="card score" aria-labelledby="scoreH"><h2 class="sr" id="scoreH">Overall product data score</h2>
   <div class="score-num t-${b.k}" data-count="${r.score}" aria-label="${r.score} out of 100">${REDUCED?r.score:0}<small>/100</small></div>
   <div>${Badge(b,r.state.label)}</div><p class="verdict">${esc(verdict(r))}</p>${ConfidenceIndicator(r)}</section>`;
 }
@@ -121,9 +121,9 @@ function ReportLimitations(r){
 }
 function ctaHtml(r){
   if(!CFG.bookingUrl&&!CFG.contactEmail)return '';
-  const subj=encodeURIComponent(`${CFG.offerName||'Agent audit'} for ${r.meta.host}`),body=encodeURIComponent(`Hi, I scanned ${r.meta.host} (${r.score}/100) and would like the full audit.`);
+  const subj=encodeURIComponent(`${CFG.offerName||'Product data fix'} for ${r.meta.host}`),body=encodeURIComponent(`Hi, I scanned ${r.meta.host} (${r.score}/100) and would like a quote to fix these.`);
   const href=CFG.bookingUrl||`mailto:${CFG.contactEmail}?subject=${subj}&body=${body}`;
-  return `<section class="card pill-cta noprint"><h2 class="sec-h">Want an agent to actually try buying from ${esc(r.meta.host)}?</h2><p style="margin-top:8px">${esc(CFG.offerLine||'')}</p><div class="row"><a class="btn" href="${esc(href)}">${CFG.bookingUrl?'Book a call':'Ask for the full audit'}</a></div></section>`;
+  return `<section class="card pill-cta noprint"><h2 class="sec-h">Want us to fix this on ${esc(r.meta.host)}?</h2><p style="margin-top:8px">${esc(CFG.offerLine||'')}</p><div class="row"><a class="btn" href="${esc(href)}">${CFG.bookingUrl?'Book a call':'Ask for a fixed-price quote'}</a></div></section>`;
 }
 function OutreachPanel(r,id='o'){
   return `<section class="card noprint" aria-labelledby="${id}H"><h2 class="card-h" id="${id}H">Message for the store owner</h2><p class="muted sm" style="margin:4px 0 0">Written from this report. Edit it before you send. Verta never sends anything for you.</p>

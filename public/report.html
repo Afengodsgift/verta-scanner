@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><title>Verta readiness report</title><meta name="robots" content="noindex,nofollow">
+<html lang="en"><head><title>Verta product data report</title><meta name="robots" content="noindex,nofollow">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10172A">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script>try{var t=localStorage.getItem("verta_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
@@ -16,6 +16,6 @@
 <script>
 MainNavigation('','site');Footer('site');
 const r=decodeReport(location.hash);
-if(r){document.title='Readiness report: '+r.meta.host+' | Verta';mountReport(r,$('#out'),true)}
+if(r){document.title='Product data report: '+r.meta.host+' | Verta';mountReport(r,$('#out'),true)}
 else $('#out').innerHTML='<section class="card empty" style="margin-top:48px"><h1 class="card-h">This report link is incomplete</h1><p>The link may have been cut off when it was copied. Ask the person who sent it for a new one.</p><a class="btn secondary" href="/">Go to Verta</a></section>';
 </script></body></html>

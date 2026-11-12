@@ -37,15 +37,15 @@
 <article class="card"><h3 class="card-h">Fix and retest</h3><p class="muted">We make the changes on your store: structured product data, price and stock markup, shipping and returns information. Fixed price, agreed before we start. Then we run the same check again and show the before and after.</p></article>
 <article class="card"><h3 class="card-h">Shopping test (optional)</h3><p class="muted">For stores that want proof, an AI agent tries real shopping tasks on your store, such as finding a product, reading its price and stock, and reaching checkout. You get screenshots and a fix list.</p></article></div></section>
 
-<section class="section" aria-labelledby="chkH"><h2 class="sec-h" id="chkH">What we look at</h2>
-<ul class="chips-list"><li>Can assistants find your store and products?</li><li>Can they understand what each product is?</li><li>Is your product data readable by machines?</li><li>Can they tell what is in stock?</li><li>Can they read price and currency?</li><li>Can they read shipping and returns rules?</li><li>Can they use your pages without a human?</li><li>Could an authorized agent reach a purchase?</li></ul>
+<section class="section" aria-labelledby="chkH"><h2 class="sec-h" id="chkH">What we check</h2>
+<ul class="chips-list"><li>Is your store and its products easy to find?</li><li>Does each product have a clear name and description?</li><li>Is your product data structured so Google can read it?</li><li>Does it say what is in stock?</li><li>Are price and currency in the data?</li><li>Are shipping and returns rules easy to find?</li><li>Do your pages work for visitors who cannot use a mouse?</li><li>Can a shopper get from product to checkout?</li></ul>
 <p class="muted sm">Works with WooCommerce, Shopify, Wix, Squarespace and custom-built stores. <a href="/about">Read the method</a>.</p></section>
 
 <section class="section" id="faq" aria-labelledby="faqH"><h2 class="sec-h" id="faqH">Questions</h2>
 <div class="faq">
 <details><summary>Do you need access to my store?</summary><p>No. The free check reads public pages only, like any visitor.</p></details>
 <details><summary>Will you place orders on my store?</summary><p>No. Checkout is only observed up to the payment step. We run test payments only on stores that have agreed to it in writing, using processor test cards.</p></details>
-<details><summary>Is the score an official rating?</summary><p>No. It is a working framework that measures how readable and usable a store is for AI assistants. It is not a certification and it does not predict sales.</p></details>
+<details><summary>Is the score an official rating?</summary><p>No. It is our own checklist score for how complete and readable your product data is. It is not a Google rating or a certification, and it does not predict rankings or sales.</p></details>
 <details><summary>What does it cost?</summary><p>The check is free. A fix is quoted at a fixed price after you have seen your findings, so there are no surprises.</p></details>
 <details><summary>What can't the free check see?</summary><p>Anything behind a login, checkout and payment, and pages that only appear after scripts run. The report says exactly what it could not test.</p></details></div></section>
 
@@ -67,19 +67,19 @@ function ContactBox(id,dark){
     if(n.err){err.textContent=n.err;return}
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){err.textContent='Enter an email address we can send the report to.';return}
     err.textContent='';
-    location.href=`mailto:${CFG.contactEmail}?subject=${encodeURIComponent('Free store check: '+s)}&body=${encodeURIComponent(`Hi,\n\nPlease run the free AI readiness check on ${s}.\nMy email: ${m}\n`)}`;
+    location.href=`mailto:${CFG.contactEmail}?subject=${encodeURIComponent('Free product data check: '+s)}&body=${encodeURIComponent(`Hi,\n\nPlease run the free product data check on ${s}.\nMy email: ${m}\n`)}`;
     err.style.color='var(--ready-t)';err.textContent=`Your email app should open with the request. If it does not, write to ${CFG.contactEmail}.`};
 }
 ContactBox('contact');ContactBox('contact2');
 /* example report, built with the same components as real reports */
 (function(){
   const L=(id,name,q,score,checks=[])=>({id,name,question:q,score,checks});
-  const S={score:62,state:{key:'compatible',label:'Verta Compatible',line:''},counts:{P0:0,P1:2,P2:3,unsure:0},meta:{host:'example-store.com',platform:'WooCommerce',confidence:'high',pages:['a','b','c']},top:['a1','a2'],
+  const S={score:62,state:{key:'friction',label:'Needs fixes',line:''},counts:{P0:0,P1:2,P2:3,unsure:0},meta:{host:'example-store.com',platform:'WooCommerce',confidence:'high',pages:['a','b','c']},top:['a1','a2'],
    layers:[L('discover','Discoverability','',84),L('semantic','Semantic clarity','',71),L('infra','Product infrastructure','',58),L('inventory','Inventory','',35),L('pricing','Pricing','',90),L('policies','Policies','',48),L('interact','Interaction','',77),L('transact','Transaction readiness','',null)]};
-  S.layers[3].checks=[{id:'a1',sev:'P1',status:'fail',title:'Availability stated in the data',evidence:'Product pages show "In stock" in text, but no availability value is in the structured data.',impact:'An assistant cannot reliably tell whether the item can be bought right now.',fix:'Add availability to every Offer and keep it current.'}];
-  S.layers[5].checks=[{id:'a2',sev:'P1',status:'warn',title:'Returns policy findable',evidence:'No link to a returns page was found in the footer.',impact:'Assistants skip stores whose return terms they cannot read.',fix:'Publish a returns page and link it in the footer.'}];
+  S.layers[3].checks=[{id:'a1',sev:'P1',status:'fail',title:'Availability stated in the data',evidence:'Product pages show "In stock" in text, but no availability value is in the structured data.',impact:'Google and AI assistants cannot reliably tell whether the item can be bought right now.',fix:'Add availability to every Offer and keep it current.'}];
+  S.layers[5].checks=[{id:'a2',sev:'P1',status:'warn',title:'Returns policy findable',evidence:'No link to a returns page was found in the footer.',impact:'Google Shopping and AI assistants can skip stores whose return terms they cannot read.',fix:'Publish a returns page and link it in the footer.'}];
   $('#preview').innerHTML='<div class="summary">'+ReadinessScore(S)+LayerScoreChart(S)+'</div><div class="issues">'+topChecks(S).map(PriorityIssueCard).join('')+'</div>';
-  const hc=$('#heroCard');hc.innerHTML='<p class="example-tag">Example result, not a real store</p><div class="hc-score t-compat">62<small>/100</small></div><div style="margin:8px 0 16px">'+Badge(BANDS.compat,'Verta Compatible')+'</div><ul class="layers">'+[S.layers[3],S.layers[4],S.layers[5]].map(LayerScoreRow).join('')+'</ul>';hc.hidden=false;
+  const hc=$('#heroCard');hc.innerHTML='<p class="example-tag">Example result, not a real store</p><div class="hc-score t-fric">62<small>/100</small></div><div style="margin:8px 0 16px">'+Badge(BANDS.fric,'Needs fixes')+'</div><ul class="layers">'+[S.layers[3],S.layers[4],S.layers[5]].map(LayerScoreRow).join('')+'</ul>';hc.hidden=false;
   $$('#heroCard .track i, #preview .track i').forEach(i=>i.style.width=i.dataset.w+'%');
   const sn=$('#preview .score-num');if(sn)sn.firstChild.nodeValue=S.score;
 })();
