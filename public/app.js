@@ -55,11 +55,14 @@ function verdict(r){
 }
 const topChecks=r=>{const all=r.layers.flatMap(l=>l.checks);return r.top.map(id=>all.find(c=>c.id===id)).filter(Boolean)};
 function emailMsg(r){
-  const lines=topChecks(r).slice(0,3).map((c,i)=>`${i+1}. ${c.title}: ${c.evidence}`).join('\n');
+  const t=topChecks(r),first=t[0],rest=t.slice(1,3).map(c=>`- ${c.title}: ${c.evidence}`).join('\n');
   const me=CFG.senderName?`\n\n${CFG.senderName}`:'';
-  return `Subject: How AI shopping assistants see ${r.meta.host}\n\nHi,\n\nI ran ${r.meta.host} through a free check of how well AI shopping assistants can find, understand and buy from a store. It scored ${r.score}/100 (${r.state.label}).\n\nThe three things costing you the most:\n${lines||'No major problems found.'}\n\nEach one has a straightforward fix. I can send the full report (it is short) or walk through it in 15 minutes. No charge.${me}`;
+  const open=first?`While looking at ${r.meta.host} I noticed this: ${first.evidence}`:`I looked at ${r.meta.host} and found nothing major to fix.`;
+  const why=first&&first.impact?`\n\nWhy it matters: ${first.impact}`:'';
+  const fix=first&&first.fix?`\n\nThe fix: ${first.fix}`:'';
+  return `Subject: A product data problem on ${r.meta.host}\n\nHi,\n\n${open}${why}${fix}${rest?`\n\nTwo more things I saw:\n${rest}`:''}\n\nI fix this for a fixed price and show you the before and after. If you want, I will send the short list of what I found, free. No call needed.${me}`;
 }
-function dmMsg(r){const t=topChecks(r)[0];return `Hi, I checked ${r.meta.host} for how AI shopping assistants see it: ${r.score}/100. Biggest issue: ${t?t.title.toLowerCase():'nothing major'}${t&&t.fix?` (${t.fix.split('. ')[0].replace(/\.$/,'')})`:''}. Happy to send the short report if useful.${CFG.senderName?' - '+CFG.senderName:''}`}
+function dmMsg(r){const t=topChecks(r)[0];return `Hi, quick note on ${r.meta.host}: ${t?t.evidence:'your product pages look fine to me'}${t&&t.fix?` Fix: ${t.fix.split('. ')[0].replace(/\.$/,'')}.`:''} I can send the short list of what I found, free.${CFG.senderName?' - '+CFG.senderName:''}`}
 function reportText(r){
   let t=`Verta Readiness Report: ${r.meta.host}\nScore ${r.score}/100, ${r.state.label}. ${verdict(r)}\nConfidence: ${r.meta.confidence}. Platform: ${r.meta.platform}.\n\n`;
   for(const l of r.layers){t+=`${l.name}: ${l.score==null?'not tested':l.score+'/100'}\n`;for(const c of l.checks)if(c.status==='fail'||c.status==='warn')t+=`  - [${c.sev}] ${c.title}: ${c.evidence} Fix: ${c.fix}\n`}

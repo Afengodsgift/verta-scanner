@@ -3,6 +3,6 @@ window.VERTA_CONFIG = {
   contactEmail: "",      // e.g. "hello@yourdomain.com"
   bookingUrl: "",        // e.g. a Cal.com / Calendly link (used first when set)
   senderName: "",        // your name, used to sign outreach messages
-  offerName: "Agent audit",
-  offerLine: "An AI agent runs real shopping missions on your store (find a product, read the price and stock, add to cart, reach checkout) and you get a report with screenshots as proof, a fix list in priority order, and a retest."
+  offerName: "Product data fix",
+  offerLine: "We fix the product data on your store (structured data, price and stock markup, shipping and returns info) so Google Shopping, rich results and AI assistants can read it. Fixed price, with a before and after check."
 };
