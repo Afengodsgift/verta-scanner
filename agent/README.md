@@ -16,6 +16,15 @@ python3 -m unittest tests.test_agent                # offline, local fixture sto
 ```
 Output: `report.json` (canonical), `report.md`, `report.html`, `evidence.json`, `trace.json`, `screenshots/`.
 
+## Full purchase cycle (default; `--basic` to skip the last two)
+Missions: discover, attribute, price, stock, add to cart (picks required size/colour variants first), change quantity, reach checkout (takes 'continue as guest' when offered), read shipping options/cost/tax before paying, and (authorized stores only) login and test-card payment.
+
+## Verification
+Every extracted claim is checked against what the browser actually saw before it counts: attribute values, prices and availability must appear in the page text/structured data, a cart claim needs the product on the cart page, 'checkout reached' needs checkout fields (a login wall is not checkout), a payment outcome must match the page text. Rejected claims become honest failures (`_claimed` is kept in the evidence) and the report states how many were rejected.
+
+## Vision
+The LLM brain also receives a screenshot of each page (JPEG) alongside the element list. `LLMBrain(vision=False)` turns it off to cut cost.
+
 ## Authorized mode: login + test-card checkout
 Off by default. For merchants who have agreed to it (paid audit, written permission):
 ```

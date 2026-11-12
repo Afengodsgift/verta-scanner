@@ -48,7 +48,8 @@ def build(run_data, store):
         roadmap=roadmap, evidence_refs=ev_ids, inconclusive=inconclusive,
         methodology=dict(brain=run_data["brain"], started=run_data["started"], finished=run_data["finished"], missions_executed=len(results),
                          browser="Chromium via Playwright (headless), honest UA VertaAgent/0.1", scoring="capability 70% + evidence quality 15% + recovery 15%; P0 failures cap a dimension at 40",
-                         evidence="Every extract/safety event stored with screenshot, DOM excerpt, timestamp and hash"),
+                         evidence="Every extract/safety event stored with screenshot, DOM excerpt, timestamp and hash",
+                         verification=f"Claims are checked against the page before they count; {sum(1 for e in store.items if (e.get('data') or {}).get('_claimed'))} claim(s) were rejected in this run"),
         limitations=LIMITS)
     rep["recommendations"] = [dict(category=c, action=a) for c, a in rep["recommendations"]]
     rep["quality_checks"] = quality(rep, store)

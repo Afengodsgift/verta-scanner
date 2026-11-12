@@ -2,7 +2,7 @@
 import re
 from urllib.parse import urlparse
 
-ALLOWED = {"goto", "click", "fill", "press", "extract", "wait", "finish"}
+ALLOWED = {"goto", "click", "fill", "select", "press", "extract", "wait", "finish"}
 FORBIDDEN_TEXT = re.compile(
     r"\b(place order|pay now|complete (purchase|order)|buy now|confirm (order|payment)|submit payment|subscribe)\b", re.I)
 PAY_FIELDS = re.compile(r"(card|cvv|cvc|cc-|expir|iban|routing)", re.I)

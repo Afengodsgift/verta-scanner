@@ -7,6 +7,7 @@ from .controller import Controller
 from .brain import HeuristicBrain
 from .evaluator import evaluate
 from .failures import TAXONOMY
+from . import verify
 
 
 def run_mission(m, ctl, brain, store, shared, host):
@@ -16,7 +17,7 @@ def run_mission(m, ctl, brain, store, shared, host):
     # entry point
     if m["type"] in ("discover_product", "login"):
         ctl.execute({"action": "goto", "url": shared["entry"]})
-    elif m["type"] == "payment_test":
+    elif m["type"] in ("payment_test", "check_shipping"):
         if not shared.get("checkout_url"):
             res.update(status="SKIPPED", summary="Dependency not met: checkout was not reached."); return res
         ctl.execute({"action": "goto", "url": shared["checkout_url"]})
@@ -30,12 +31,17 @@ def run_mission(m, ctl, brain, store, shared, host):
     for step in range(budget["max_steps"]):
         if time.time() - t0 > budget["timeout_s"]:
             res.update(status="TIMEOUT", failure_code="TIMEOUT"); break
+        if getattr(brain, "vision", False): obs["shot"] = ctl.screenshot_b64()
         action = brain.next_action(m, obs, hist, shared)
         res["steps"] = step + 1
         if action["action"] == "extract":
             shot = ctl.screenshot(os.path.join(store.dir, "screenshots", f"{m['mission_id']}-{step}.png"))
-            eid = store.add(m["mission_id"], obs["url"], "extract:" + action["tag"], json.dumps(action["data"])[:300], screenshot=shot,
-                            dom_excerpt=obs["text"][:600], kind=action["tag"], data=action["data"])
+            claimed = action["data"]
+            vdata, vnotes = verify.check(action["tag"], claimed, obs, shared)
+            rejected = any(n.startswith("REJECTED") for n in vnotes)
+            action = dict(action, data=vdata)
+            eid = store.add(m["mission_id"], obs["url"], "extract:" + action["tag"], json.dumps(vdata)[:300], screenshot=shot,
+                            confidence="LOW" if rejected else "HIGH", dom_excerpt=obs["text"][:600], kind=action["tag"], data=dict(vdata, _verification=vnotes, _claimed=claimed if rejected else None))
             res["evidence_ids"].append(eid)
             extracts.append({"tag": action["tag"], "data": action["data"], "eid": eid})
             store.log(m["mission_id"], step, {"action": action, "brain": brain.name})

@@ -164,13 +164,42 @@ class HeuristicBrain:
         s = STOCK.search(obs["text"])
         return {"action": "extract", "tag": "inventory", "data": {"state": s.group(0) if s else None, "source": "text" if s else "none"}}
 
+    def _pick_variants(self, obs, hist):
+        done = {h["action"].get("id") for h in hist if h["action"].get("action") in ("select", "click")}
+        bad = re.compile(r"out of stock|sold out|unavailable", re.I)
+        for e in obs["elements"]:
+            opts = e.get("options")
+            if e["tag"] == "select" and e["id"] not in done and opts:
+                ph = re.search(r"select|choose|pick|^-+", opts[0], re.I) is not None
+                if e.get("selected", 0) == 0 and ph:
+                    pick = next((i for i, t in enumerate(opts) if i > 0 and not bad.search(t)), None)
+                    if pick is not None: return {"action": "select", "id": e["id"], "option": pick}
+        groups = {}
+        for e in obs["elements"]:
+            if e["tag"] == "input" and e["type"] == "radio" and e["name"] and not re.search(r"ship|pay|deliver", e["name"], re.I): groups.setdefault(e["name"], []).append(e)
+        for name, es in groups.items():
+            if not any(x.get("selected") for x in es) and not any(x["id"] in done for x in es):
+                pick = next((x for x in es if not x.get("disabled") and not bad.search(x["text"])), None)
+                if pick: return {"action": "click", "id": pick["id"]}
+        return None
+
     def _add_to_cart(self, m, obs, hist, shared, step):
-        if not self._did(hist, "click"):
-            btn = next((e for e in obs["elements"] if ADD.search(e["text"])), None)
+        acts = [h["action"] for h in hist]
+        added = any(a.get("tag_add") for a in acts)
+        addbtn = lambda: next((e for e in obs["elements"] if ADD.search(e["text"])), None)
+        if not added:
+            v = self._pick_variants(obs, hist)
+            if v: return dict(v, variant=True)
+            btn = addbtn()
             if not btn:
                 return {"action": "extract", "tag": "cart", "data": {"added": False, "reason": "no_add_control", "quote_only": bool(GATED.search(obs["text"]))}}
-            return {"action": "click", "id": btn["id"]}
-        # verify: cart link/page shows product
+            return {"action": "click", "id": btn["id"], "tag_add": True}
+        if acts and acts[-1].get("variant"):  # a variant was chosen after a failed add: add again
+            btn = addbtn()
+            if btn: return {"action": "click", "id": btn["id"], "tag_add": True}
+        if re.search(r"please (choose|select|pick)|required option|select an option", obs["text"], re.I) and len(hist) < 9:
+            v = self._pick_variants(obs, hist)
+            if v: return dict(v, variant=True)
         if not self._did(hist, "goto"):
             link = next((e for e in obs["elements"] if e["tag"] == "a" and re.search(r"/cart|/basket", e["href"])), None)
             if link: return {"action": "goto", "url": urljoin(obs["url"], link["href"])}
@@ -178,12 +207,50 @@ class HeuristicBrain:
         in_cart = bool(title & toks(obs["text"])) and not re.search(r"(cart|basket) is (currently )?empty|no items", obs["text"], re.I)
         return {"action": "extract", "tag": "cart", "data": {"added": in_cart, "cart_url": obs["url"]}}
 
+    def _update_cart(self, m, obs, hist, shared, step):
+        acts = [h["action"] for h in hist]
+        if not any(a.get("action") == "goto" for a in acts):
+            link = next((e for e in obs["elements"] if e["tag"] == "a" and re.search(r"/cart|/basket", e["href"])), None)
+            if link and "/cart" not in obs["url"] and "/basket" not in obs["url"]: return {"action": "goto", "url": urljoin(obs["url"], link["href"])}
+        q = next((e for e in obs["elements"] if e["tag"] == "input" and (e["type"] == "number" or re.search(r"qty|quantity", e["name"] + e["placeholder"] + e["text"], re.I))), None)
+        if not q:
+            return {"action": "extract", "tag": "cart_update", "data": {"updated": False, "reason": "no quantity control found"}}
+        if not any(a.get("action") == "fill" for a in acts):
+            shared["_cart_before"] = re.sub(r"\s+", " ", obs["text"])[:300]
+            return {"action": "fill", "id": q["id"], "value": "2"}
+        if not any(a.get("tag_upd") for a in acts):
+            b = next((e for e in obs["elements"] if e["tag"] in ("button", "input", "a") and re.search(r"update (cart|basket)|apply|update", e["text"], re.I)), None)
+            if b: return {"action": "click", "id": b["id"], "tag_upd": True}
+            return {"action": "press", "key": "Enter", "tag_upd": True}
+        before = shared.pop("_cart_before", "")
+        qv = re.search(r"(qty|quantity)\s*:?\s*2\b|\bx\s?2\b|\b2\s?x\b", obs["text"], re.I) or any(e["tag"] == "input" and (e["type"] == "number" or re.search("qty|quantity", e["name"])) and e.get("value") == "2" for e in obs["elements"])
+        changed = re.sub(r"\s+", " ", obs["text"])[:300] != before
+        return {"action": "extract", "tag": "cart_update", "data": {"updated": bool(qv and changed), "before": "1", "after": "2" if qv else "", "reason": None if (qv and changed) else "cart did not show the new quantity"}}
+
+    def _check_shipping(self, m, obs, hist, shared, step):
+        opts, seen = [], set()
+        for line in [l.strip() for l in obs["text"].split("\n") if l.strip()]:
+            if re.search(r"ship|deliver|pickup|express|standard|courier", line, re.I) and len(line) < 120:
+                pm = PRICE_RE.search(line)
+                lab = re.sub(PRICE_RE, "", line).strip(" :-–")
+                if (pm or re.search(r"\bfree\b", line, re.I)) and lab and lab not in seen:
+                    seen.add(lab); opts.append({"label": lab, "price": pm.group(0) if pm else "free"})
+        tax = bool(re.search(r"\b(tax|vat|gst)\b", obs["text"], re.I))
+        return {"action": "extract", "tag": "shipping", "data": {"options": opts, "tax_shown": tax, "reason": None if opts else "no shipping options with a price on the checkout/cart page"}}
+
     def _reach_checkout(self, m, obs, hist, shared, step):
         if CAPTCHA.search(obs["text"]):
             return {"action": "extract", "tag": "checkout", "data": {"reached": False, "blocker": "captcha"}}
         pay_fields = [e for e in obs["elements"] if e["tag"] == "input" and re.search(r"card|cvv|expir|email|address|postal|zip", e["name"] + e["placeholder"], re.I)]
-        if pay_fields and "checkout" in obs["url"].lower():
+        has_pw = any(e["tag"] == "input" and e["type"] == "password" for e in obs["elements"])
+        guest = next((e for e in obs["elements"] if re.search(r"guest", e["text"] + e["href"], re.I) and e["tag"] in ("a", "button")), None)
+        if guest and has_pw and not any(h["action"].get("tag_guest") for h in hist):
+            return {"action": "click", "id": guest["id"], "tag_guest": True}
+        if pay_fields and not has_pw and "checkout" in obs["url"].lower():
             return {"action": "extract", "tag": "checkout", "data": {"reached": True, "form_fields": len(pay_fields)}}
+        guest = next((e for e in obs["elements"] if re.search(r"guest", e["text"] + e["href"], re.I) and e["tag"] in ("a", "button")), None)
+        if guest and not any(h["action"].get("tag_guest") for h in hist):
+            return {"action": "click", "id": guest["id"], "tag_guest": True}
         if re.search(r"(log ?in|sign ?in)", obs["text"], re.I) and re.search(r"password", " ".join(e["name"] + e["type"] for e in obs["elements"]), re.I) and self._did(hist, "click"):
             return {"action": "extract", "tag": "checkout", "data": {"reached": False, "blocker": "auth_required"}}
         clicked = sum(1 for h in hist if h["action"].get("action") == "click")
@@ -205,15 +272,19 @@ SHAPES = {
     "cart": '{"added": true|false, "reason": short, "quote_only": true|false}  (added=true only if the cart page/mini-cart actually shows the product)',
     "checkout": '{"reached": true|false, "blocker": "captcha"|"auth_required"|"navigation"|null, "form_fields": int}  (reached=true only on a page asking for contact/shipping/payment details)',
     "login": '{"logged_in": true|false, "reason": short}',
+    "cart_update": '{"updated": true|false, "before": qty/total before, "after": qty/total after, "reason": short}  (change the quantity to 2 in the cart, apply it, and report what the cart then shows)',
+    "shipping": '{"options": [{"label": exact label as shown, "price": exact price text or "free"}], "tax_shown": true|false, "reason": short if none}  (only options visible on the page; do not guess)',
     "payment": '{"outcome": "declined"|"accepted"|"unknown", "excerpt": first 200 chars of the page message}',
 }
 TAG_FOR = {"discover_product": "product_page", "extract_attribute": "attribute", "get_price": "price", "check_inventory": "inventory",
-           "add_to_cart": "cart", "reach_checkout": "checkout", "login": "login", "payment_test": "payment"}
+           "add_to_cart": "cart", "reach_checkout": "checkout", "login": "login", "payment_test": "payment",
+           "update_cart": "cart_update", "check_shipping": "shipping"}
 FILL_KEYS = ["login_user", "login_password", "email", "first", "last", "name", "address", "city", "postal", "phone", "card", "exp", "cvc"]
 TOOL = {"name": "act", "description": "Perform exactly one browser action or report your conclusion with extract.",
         "input_schema": {"type": "object", "properties": {
             "reasoning": {"type": "string", "description": "One or two sentences: what you see and why this action."},
-            "action": {"type": "string", "enum": ["goto", "click", "fill", "press", "wait", "extract", "finish"]},
+            "action": {"type": "string", "enum": ["goto", "click", "fill", "select", "press", "wait", "extract", "finish"]},
+            "option": {"type": "integer", "description": "For select: the option index i from the element's option list."},
             "id": {"type": "integer", "description": "Element id from the list (click/fill)."},
             "url": {"type": "string"}, "key": {"type": "string"},
             "fill_from": {"type": "string", "enum": FILL_KEYS, "description": "For fill: which stored value to type. You never see or choose the value itself."},
@@ -221,11 +292,11 @@ TOOL = {"name": "act", "description": "Perform exactly one browser action or rep
             "tag": {"type": "string", "enum": list(SHAPES)}, "data": {"type": "object"}},
             "required": ["reasoning", "action"]}}
 SYSTEM = """You are the VERTA audit agent, acting like an AI procurement agent shopping on a store. Your job is to measure honestly how well the store works for an agent, not to make it look good.
-Rules: use only the listed element ids; one action per turn. Never invent values: report what the page actually shows. If something is not on the page, say so (null / absent). Prefer structured evidence (JSON-LD) over page text. Never enter payment or password data yourself: use fill_from. Never click anything that places an order or pays unless the mission is payment_test. When you have enough to answer the mission, call extract with the exact data shape. Failing honestly is correct; guessing is a defect."""
+Rules: use only the listed element ids; one action per turn. Never invent values: report what the page actually shows. If something is not on the page, say so (null / absent). Prefer structured evidence (JSON-LD) over page text. Never enter payment or password data yourself: use fill_from. Products often need a variant (size, colour) chosen with select or click before add-to-cart works: choose the first available option. Never click anything that places an order or pays unless the mission is payment_test. When you have enough to answer the mission, call extract with the exact data shape. Failing honestly is correct; guessing is a defect."""
 
 
 def compact(obs, n_el=70, n_text=2200):
-    els = "\n".join(f'[{e["id"]}] {e["tag"]}{"/" + e["type"] if e["type"] else ""} "{e["text"][:70]}"' + (f' -> {e["href"][:90]}' if e["href"] else "") + (f' name={e["name"]}' if e["name"] else "") for e in obs["elements"][:n_el])
+    els = "\n".join(f'[{e["id"]}] {e["tag"]}{"/" + e["type"] if e["type"] else ""} "{e["text"][:70]}"' + (f' -> {e["href"][:90]}' if e["href"] else "") + (f' name={e["name"]}' if e["name"] else "") + (f' value={e["value"]}' if e.get("value") else "") + (" [checked]" if e.get("selected") and e["type"] in ("radio", "checkbox") else "") + (" [disabled]" if e.get("disabled") else "") + (" options=" + json.dumps(list(enumerate(e["options"]))) if e.get("options") else "") for e in obs["elements"][:n_el])
     ld = []
     for p in obs["product_ld"][:2]:
         offers = p.get("offers"); offers = offers if isinstance(offers, list) else [offers] if offers else []
@@ -237,7 +308,8 @@ class LLMBrain:
     """Claude-driven brain via forced tool use. Same interface as HeuristicBrain.
     Credentials/card values are never sent to the model (fill_from keys are resolved locally)."""
 
-    def __init__(self, model=None, base_url=None, fallback=True):
+    def __init__(self, model=None, base_url=None, fallback=True, vision=True):
+        self.vision = vision
         self.key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.key:
             raise RuntimeError("ANTHROPIC_API_KEY not set")
@@ -247,9 +319,10 @@ class LLMBrain:
         self.name = f"llm:{self.model}"
         self.fell_back = 0
 
-    def _call(self, system, user):
+    def _call(self, system, user, shot=None):
+        content = user if not shot else [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": shot}}, {"type": "text", "text": user}]
         body = json.dumps({"model": self.model, "max_tokens": 700, "system": system, "tools": [TOOL], "tool_choice": {"type": "tool", "name": "act"},
-                           "messages": [{"role": "user", "content": user}]}).encode()
+                           "messages": [{"role": "user", "content": content}]}).encode()
         req = urllib.request.Request(self.base + "/v1/messages", body, {"x-api-key": self.key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
         r = json.load(urllib.request.urlopen(req, timeout=40))
         return next(b["input"] for b in r["content"] if b.get("type") == "tool_use")
@@ -261,7 +334,7 @@ class LLMBrain:
                 f"Mission type: {mission['type']}. When done, call extract with tag \"{tag}\" and data shaped as: {SHAPES[tag]}\n"
                 f"Step {len(hist)+1} of {mission['budget']['max_steps']}.\nActions so far:\n{done}\n\nCURRENT PAGE\n{compact(obs)}")
         try:
-            a = self._call(SYSTEM, user)
+            a = self._call(SYSTEM, user, obs.get("shot") if self.vision else None)
             if a.get("action") == "extract":
                 a["tag"] = tag if a.get("tag") not in SHAPES else a["tag"]
                 a.setdefault("data", {})

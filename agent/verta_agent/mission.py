@@ -2,8 +2,10 @@
 import json
 
 REQUIRED = ["mission_id", "type", "objective", "success_criteria"]
-TYPES = {"login", "payment_test", "discover_product", "extract_attribute", "get_price", "check_inventory", "add_to_cart", "reach_checkout"}
+TYPES = {"update_cart", "check_shipping", "login", "payment_test", "discover_product", "extract_attribute", "get_price", "check_inventory", "add_to_cart", "reach_checkout"}
 DIMENSION = {  # mission type -> scoring dimension
+    "update_cart": "transaction",
+    "check_shipping": "transaction",
     "login": "authorization_security",
     "payment_test": "transaction",
     "discover_product": "discoverability",
@@ -29,8 +31,8 @@ def load(path):
     return m
 
 
-def default_suite(query, attribute=None, login=False, payment_test=False):
-    """The standard 6-mission procurement journey."""
+def default_suite(query, attribute=None, login=False, payment_test=False, full_cycle=False):
+    """The standard procurement journey. full_cycle adds quantity change and shipping/tax discovery."""
     attr = attribute or "pressure rating"
     base = {"inputs": {"query": query, "attribute": attr}, "budget": {"max_steps": 15, "timeout_s": 60}}
     out = []
@@ -40,8 +42,11 @@ def default_suite(query, attribute=None, login=False, payment_test=False):
         ("get_price", "Determine the price without logging in", ["price visible"]),
         ("check_inventory", "Determine whether the product is purchasable now", ["availability state found"]),
         ("add_to_cart", "Add the product to cart", ["cart contains product"]),
+        ("update_cart", "Change the quantity in the cart", ["cart quantity and total update"]),
         ("reach_checkout", "Reach checkout without paying", ["checkout reachable without human-only step"]),
+        ("check_shipping", "Find shipping options, shipping cost and tax before paying", ["shipping options with prices visible"]),
     ], 1):
+        if not full_cycle and t in ("update_cart", "check_shipping"): continue
         out.append({"type": t, "objective": obj, "success_criteria": crit, **json.loads(json.dumps(base))})
     if login:
         out.insert(0, {"type": "login", "objective": "Log in with the merchant-provided test account", "success_criteria": ["authenticated session"], **json.loads(json.dumps(base))})

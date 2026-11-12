@@ -7,12 +7,20 @@ def evaluate(mission, extracts):
     ex = next((e for e in extracts if e["tag"] == {
         "discover_product": "product_page", "extract_attribute": "attribute", "get_price": "price",
         "check_inventory": "inventory", "add_to_cart": "cart", "reach_checkout": "checkout",
-        "login": "login", "payment_test": "payment"}[t]), None)
+        "login": "login", "payment_test": "payment", "update_cart": "cart_update", "check_shipping": "shipping"}[t]), None)
     if ex is None:
         return dict(status="FAILED", failure_code="PRODUCT_NOT_DISCOVERABLE" if t == "discover_product" else "TIMEOUT",
                     confidence="MEDIUM", summary="No conclusive observation was produced.", root_cause=None)
     d = ex["data"]
     R = lambda s, c=None, conf="HIGH", sm="", rc=None: dict(status=s, failure_code=c, confidence=conf, summary=sm, root_cause=rc)
+    if t == "update_cart":
+        if d.get("updated"): return R("SUCCESS", sm=f"Quantity change reflected in cart ({d.get('before')} -> {d.get('after')}).")
+        return R("FAILED", "CART_UPDATE_FAILED", sm="Could not change cart quantity.", rc=d.get("reason") or "Cart did not reflect the change.")
+    if t == "check_shipping":
+        opts = d.get("options") or []
+        priced = [o for o in opts if o.get("price") not in (None, "")]
+        if priced: return R("SUCCESS", conf="HIGH" if d.get("verified", True) else "MEDIUM", sm=f"{len(priced)} shipping option(s) with price visible" + ("; tax shown" if d.get("tax_shown") else "; tax not shown") + ".")
+        return R("FAILED", "SHIPPING_INFO_UNAVAILABLE", sm="No shipping options with prices visible before payment.", rc=d.get("reason"))
     if t == "login":
         return R("SUCCESS", sm="Logged in with test account.") if d.get("logged_in") else R("FAILED", "LOGIN_FAILED", sm="Login did not produce an authenticated session.", rc=d.get("reason"))
     if t == "payment_test":
@@ -21,6 +29,7 @@ def evaluate(mission, extracts):
         if o == "accepted": return R("SUCCESS", sm="Test card was ACCEPTED and the store showed an order confirmation (store is in test mode, or an order was created: clean it up).")
         return R("FAILED", "PAYMENT_NOT_PROCESSED", sm="Submitted checkout but got no clear success or decline.", rc=d.get("excerpt"))
     if t == "discover_product":
+        if d.get("_invalid"): return R("FAILED", "PRODUCT_NOT_DISCOVERABLE", sm="Claimed product page showed no product signals.", rc="Page had no product data, price or add-to-cart control.")
         return R("SUCCESS", sm=f"Reached product page: {d.get('title') or d.get('url')}")
     if t == "extract_attribute":
         if d["value"]:

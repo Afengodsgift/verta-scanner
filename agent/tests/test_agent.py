@@ -150,7 +150,7 @@ class TAuth(unittest.TestCase):
 
 import re, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from verta_agent.brain import LLMBrain
+from verta_agent.brain import LLMBrain, HeuristicBrain
 
 
 def mock_llm(mode="script"):
@@ -165,6 +165,7 @@ def mock_llm(mode="script"):
             if mode == "down":
                 self.send_response(500); self.end_headers(); return
             u = body["messages"][0]["content"]
+            if isinstance(u, list): u = next(b["text"] for b in u if b["type"] == "text")
             def eid(rx):
                 m = re.search(r"\[(\d+)\] " + rx, u); return int(m.group(1)) if m else None
             if "MISSION: Find a product" in u:
@@ -203,6 +204,83 @@ class TLLM(unittest.TestCase):
         data, store = run(f"{BASE}/good/", ms, d, brain=b)
         self.assertEqual(data["results"][0]["status"], "SUCCESS"); self.assertGreater(b.fell_back, 0)
         self.assertTrue(any("heuristic fallback" in json.dumps(t) for t in store.trace))
+        srv.shutdown()
+
+
+def full_run(v="full", mutate=None):
+    d = tempfile.mkdtemp(); fixture_store.H.qty.clear(); fixture_store.H.cart.clear()
+    ms = M.default_suite("stainless ball valve", "pressure rating", full_cycle=True)
+    data, store = run(f"{BASE}/{v}/", ms, d)
+    return data, store, build(data, store)
+
+
+class TFull(unittest.TestCase):
+    def test_full_cycle_variant_qty_guest_shipping(self):
+        data, store, rep = full_run()
+        c = {r["type"]: r for r in data["results"]}
+        self.assertEqual(c["add_to_cart"]["status"], "SUCCESS", c["add_to_cart"])      # needed a size chosen first
+        self.assertTrue(any(t["action"].get("action") == "select" for t in store.trace if t["mission_id"] == c["add_to_cart"]["mission_id"]))
+        self.assertEqual(c["update_cart"]["status"], "SUCCESS", c["update_cart"])
+        self.assertEqual(c["reach_checkout"]["status"], "SUCCESS", c["reach_checkout"])  # via 'continue as guest'
+        self.assertTrue(any(t["action"].get("tag_guest") for t in store.trace if t["mission_id"] == c["reach_checkout"]["mission_id"]))
+        self.assertEqual(c["check_shipping"]["status"], "SUCCESS", c["check_shipping"])
+        ship = next(e for e in store.items if e["kind"] == "shipping")["data"]
+        self.assertEqual(len(ship["options"]), 2); self.assertTrue(ship["tax_shown"])
+        self.assertTrue(all(rep["quality_checks"].values()))
+
+    def test_stores_without_features_fail_honestly(self):
+        data, store, rep = full_run("good")   # no qty control, no shipping info
+        c = {r["type"]: r for r in data["results"]}
+        self.assertEqual(c["update_cart"]["failure_code"], "CART_UPDATE_FAILED")
+        self.assertEqual(c["check_shipping"]["failure_code"], "SHIPPING_INFO_UNAVAILABLE")
+
+
+class TVerify(unittest.TestCase):
+    def obs(self, text, ld=None, url="http://x/products/a", els=None):
+        return {"text": text, "product_ld": ld or [], "elements": els or [], "url": url, "title": "t"}
+
+    def test_invented_claims_are_rejected(self):
+        from verta_agent import verify
+        o = self.obs("Valve. Rated 500 PSI. $84.50. In stock")
+        d, n = verify.check("attribute", {"attribute": "pressure rating", "value": "1000 PSI", "source": "text"}, o)
+        self.assertIsNone(d["value"]); self.assertTrue(any(x.startswith("REJECTED") for x in n))
+        d, n = verify.check("attribute", {"attribute": "pressure", "value": "500 PSI", "source": "text"}, o); self.assertEqual(d["value"], "500 PSI")
+        d, n = verify.check("price", {"price": "$99.00", "source": "text"}, o); self.assertIsNone(d["price"])
+        d, n = verify.check("price", {"price": "$84.50", "source": "text"}, o); self.assertEqual(d["price"], "$84.50")
+        d, n = verify.check("inventory", {"state": "ships in 2 days", "source": "text"}, o); self.assertIsNone(d["state"])
+        d, n = verify.check("payment", {"outcome": "accepted"}, self.obs("Your card was declined")); self.assertEqual(d["outcome"], "declined")
+        d, n = verify.check("login", {"logged_in": True}, self.obs("Log in", els=[{"tag": "input", "type": "password"}])); self.assertFalse(d["logged_in"])
+        d, n = verify.check("checkout", {"reached": True}, self.obs("Welcome", url="http://x/")); self.assertFalse(d["reached"])
+
+    def test_llm_hallucination_becomes_a_failed_mission_not_a_finding(self):
+        class Liar:
+            name = "liar"; vision = False
+            def next_action(self, m, obs, hist, shared):
+                return {"action": "extract", "tag": "attribute", "data": {"attribute": "pressure rating", "value": "9999 PSI", "source": "structured"}}
+        d = tempfile.mkdtemp()
+        ms = [m for m in M.default_suite("stainless ball valve") if m["type"] == "extract_attribute"]
+        shared_entry = f"{BASE}/good/products/ss-ball-valve-1in"
+        data, store = run(shared_entry, ms, d, brain=Liar())
+        # extract_attribute is skipped without discovery, so force the product url via a discover first
+        ms = [m for m in M.default_suite("stainless ball valve") if m["type"] in ("discover_product", "extract_attribute")]
+        class Mixed:
+            name = "mixed"; vision = False; h = HeuristicBrain()
+            def next_action(self, m, obs, hist, shared):
+                return Liar().next_action(m, obs, hist, shared) if m["type"] == "extract_attribute" else self.h.next_action(m, obs, hist, shared)
+        data, store = run(f"{BASE}/good/", ms, d, brain=Mixed())
+        r = data["results"][1]
+        self.assertEqual(r["failure_code"], "ATTRIBUTE_UNAVAILABLE"); self.assertTrue(any((e["data"] or {}).get("_claimed") for e in store.items))
+        self.assertIn("rejected", build(data, store)["methodology"]["verification"])
+
+
+class TVision(unittest.TestCase):
+    def test_vision_sends_screenshot_to_llm(self):
+        os.environ["ANTHROPIC_API_KEY"] = "k"
+        srv, seen, base = mock_llm()
+        d = tempfile.mkdtemp(); ms = [m for m in M.default_suite("stainless ball valve") if m["type"] == "discover_product"]
+        run(f"{BASE}/good/", ms, d, brain=LLMBrain(base_url=base, fallback=False, vision=True))
+        c = seen[0]["messages"][0]["content"]
+        self.assertTrue(isinstance(c, list) and c[0]["type"] == "image" and c[0]["source"]["media_type"] == "image/jpeg")
         srv.shutdown()
 
 

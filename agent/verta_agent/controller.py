@@ -12,8 +12,10 @@ TAG_JS = """
     if (!vis(e)) return;
     e.setAttribute('data-verta-id', String(++n));
     out.push({id: n, tag: e.tagName.toLowerCase(), type: e.getAttribute('type') || '',
-      text: (e.innerText || e.value || e.getAttribute('aria-label') || e.getAttribute('placeholder') || '').trim().slice(0, 100),
-      href: e.getAttribute('href') || '', name: e.getAttribute('name') || '', placeholder: e.getAttribute('placeholder') || ''});
+      text: (e.tagName === 'SELECT' ? '' : (e.innerText || e.value || e.getAttribute('aria-label') || e.getAttribute('placeholder') || (e.labels && e.labels[0] ? e.labels[0].innerText : ''))).trim().slice(0, 100),
+      href: e.getAttribute('href') || '', name: e.getAttribute('name') || '', placeholder: e.getAttribute('placeholder') || '',
+      options: e.tagName === 'SELECT' ? [...e.options].map(o => o.text.trim().slice(0, 40)).slice(0, 30) : undefined,
+      disabled: !!e.disabled, selected: e.tagName === 'SELECT' ? e.selectedIndex : (e.checked ? 1 : 0), value: e.tagName === 'INPUT' ? (e.value || '').slice(0, 30) : ''});
   });
   const ld = [];
   document.querySelectorAll('script[type="application/ld+json"]').forEach(s => { try { ld.push(JSON.parse(s.textContent)); } catch (e) {} });
@@ -51,7 +53,7 @@ class Controller:
     @property
     def url(self): return self.page.url
 
-    def observe(self):
+    def observe(self, vision=False):
         try:
             self.page.wait_for_load_state("domcontentloaded", timeout=5000)
         except Exception: pass
@@ -59,6 +61,12 @@ class Controller:
         nodes = flatten_ld(d["jsonld"])
         d["product_ld"] = [n for n in nodes if str(n.get("@type", "")).lower().endswith("product") or (isinstance(n.get("@type"), list) and "Product" in n["@type"])]
         d["url"] = self.page.url
+        if vision:
+            try:
+                import base64
+                d["shot_b64"] = base64.b64encode(self.page.screenshot(type="jpeg", quality=55)).decode()
+            except Exception:
+                d["shot_b64"] = None
         return d
 
     def screenshot(self, path):
@@ -79,6 +87,10 @@ class Controller:
                 self.page.wait_for_timeout(600)
             elif t == "fill":
                 self.page.locator(f'[data-verta-id="{action["id"]}"]').first.fill(action["value"])
+            elif t == "select":
+                loc = self.page.locator(f'[data-verta-id="{action["id"]}"]').first
+                loc.select_option(index=int(action.get("option", action.get("index", 1))))
+                self.page.wait_for_timeout(300)
             elif t == "press":
                 self.page.keyboard.press(action["key"])
                 self.page.wait_for_timeout(600)
@@ -87,6 +99,13 @@ class Controller:
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e).splitlines()[0][:200]}
+
+    def screenshot_b64(self):
+        import base64
+        try:
+            return base64.b64encode(self.page.screenshot(type="jpeg", quality=55)).decode()
+        except Exception:
+            return None
 
     def element(self, obs, eid):
         return next((e for e in obs["elements"] if e["id"] == eid), None)

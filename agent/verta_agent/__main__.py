@@ -10,6 +10,7 @@ def main(argv=None):
     ap.add_argument("url"); ap.add_argument("--query", required=True, help="product to look for")
     ap.add_argument("--attribute", default="pressure rating"); ap.add_argument("--out", default="verta-run")
     ap.add_argument("--missions", help="mission JSON file (list or single)"); ap.add_argument("--llm", action="store_true")
+    ap.add_argument("--basic", action="store_true", help="skip quantity-change and shipping/tax missions")
     ap.add_argument("--login", action="store_true", help="log in first; reads VERTA_LOGIN_USER / VERTA_LOGIN_PASSWORD from the environment")
     ap.add_argument("--payment-test", action="store_true", help="AUTHORIZED stores only: submit checkout with a processor TEST card")
     ap.add_argument("--authorization-ref", help="reference to the merchant's written authorization (required for --payment-test)")
@@ -22,7 +23,7 @@ def main(argv=None):
             json.dump(x, open(a.out + ".tmp.json", "w")); ms.append(M.load(a.out + ".tmp.json"))
         os.remove(a.out + ".tmp.json")
     else:
-        ms = M.default_suite(a.query, a.attribute, login=a.login, payment_test=a.payment_test)
+        ms = M.default_suite(a.query, a.attribute, login=a.login, payment_test=a.payment_test, full_cycle=not a.basic)
     os.makedirs(a.out, exist_ok=True)
     creds = policy = prof = None
     from urllib.parse import urlparse
