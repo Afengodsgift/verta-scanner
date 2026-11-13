@@ -11,30 +11,30 @@
 <a class="skip" href="#main">Skip to content</a>
 <div class="page" id="nav"></div>
 <main id="main" class="page method" style="max-width:820px;padding-bottom:32px">
-<header style="padding:32px 0 8px"><h1 class="page-h">How Verta scores a store</h1><p class="lede" style="margin-top:12px">Verta looks at a store the way an AI shopping assistant would, then reports what it saw, why it matters and how to fix it.</p></header>
-<h2 class="sec-h">What the scan does</h2>
-<p>Verta opens your homepage, robots.txt and sitemap, finds product pages, reads their structured data and visible text, looks for shipping and returns policies, and checks for signals of cart and checkout. It reads only public pages, with a clearly labelled visitor (VertaScanner).</p>
-<h2 class="sec-h">The eight layers</h2>
-<div class="scroll-x"><table><thead><tr><th>Layer</th><th>Question</th><th>Weight</th></tr></thead><tbody>
-<tr><td>Discoverability</td><td>Can agents find the store and its products?</td><td>15</td></tr>
-<tr><td>Semantic clarity</td><td>Can they understand what each product is?</td><td>15</td></tr>
-<tr><td>Product infrastructure</td><td>Is the catalog available as structured data?</td><td>20</td></tr>
-<tr><td>Inventory</td><td>Can they tell whether something is available?</td><td>10</td></tr>
-<tr><td>Pricing</td><td>Can they read price, currency and conditions?</td><td>10</td></tr>
-<tr><td>Policies</td><td>Can they read shipping, returns and payment rules?</td><td>10</td></tr>
-<tr><td>Interaction</td><td>Can they move around without a human's eyes and mouse?</td><td>10</td></tr>
-<tr><td>Transaction readiness</td><td>Could an authorized agent get from product to purchase?</td><td>10</td></tr></tbody></table></div>
-<p class="muted sm" style="margin-top:12px">These weights are a working hypothesis, not an industry standard. They will change as Verta learns from real agent tests.</p>
+<header style="padding:32px 0 8px"><h1 class="page-h">How Verta scores a store</h1><p class="lede" style="margin-top:12px">Verta reads your product pages the way Google does, then reports what is missing, why it matters and how to fix it.</p></header>
+<h2 class="sec-h">What the check does</h2>
+<p>Verta opens your homepage, robots.txt and sitemap, finds product pages, reads their structured data and visible text, looks for shipping and returns pages, and checks for a cart and checkout. It reads only public pages, with a clearly labelled visitor (VertaScanner). It never logs in and never places an order.</p>
+<h2 class="sec-h">The eight areas</h2>
+<div class="scroll-x"><table><thead><tr><th>Area</th><th>Question</th><th>Weight</th></tr></thead><tbody>
+<tr><td>Findability</td><td>Can Google and shoppers find your store and its products?</td><td>15</td></tr>
+<tr><td>Product descriptions</td><td>Does each product have a clear name, description and image?</td><td>15</td></tr>
+<tr><td>Structured data</td><td>Is the product data in a form Google can read?</td><td>25</td></tr>
+<tr><td>Stock</td><td>Does the data say whether an item is in stock?</td><td>10</td></tr>
+<tr><td>Pricing</td><td>Are the price and currency in the data?</td><td>10</td></tr>
+<tr><td>Shipping and returns</td><td>Are shipping, returns and payment rules easy to find and read?</td><td>10</td></tr>
+<tr><td>Page usability</td><td>Do product pages work as real links and without a mouse?</td><td>10</td></tr>
+<tr><td>Cart and checkout</td><td>Can a shopper get from a product page to a cart?</td><td>5</td></tr></tbody></table></div>
+<p class="muted sm" style="margin-top:12px">These weights are our own judgement, not an industry standard. Structured data counts most because it is what Google Shopping and rich results read. They will change as Verta learns from real stores.</p>
 <h2 class="sec-h">Reading the score</h2>
-<table><tbody><tr><td><b>80 to 100</b></td><td>Complete. Product data is in good shape. Any critical problem caps the label at Mostly complete.</td></tr><tr><td><b>60 to 79</b></td><td>Mostly complete. Most foundations exist, with meaningful gaps.</td></tr><tr><td><b>40 to 59</b></td><td>Needs fixes. Significant gaps can keep products out of Google Shopping and AI search.</td></tr><tr><td><b>0 to 39</b></td><td>Hidden. Search engines and AI assistants can barely read the store.</td></tr><tr><td><b>Incomplete scan</b></td><td>No product page could be read, so only the storefront was scored.</td></tr></tbody></table>
+<table><tbody><tr><td><b>80 to 100</b></td><td>Complete. Product data is in good shape. Any critical problem caps the label at Mostly complete.</td></tr><tr><td><b>60 to 79</b></td><td>Mostly complete. Most of the data is in place, with meaningful gaps.</td></tr><tr><td><b>40 to 59</b></td><td>Needs fixes. Significant gaps can keep products out of Google Shopping and AI search.</td></tr><tr><td><b>0 to 39</b></td><td>Hidden. Search engines and AI assistants can barely read the store.</td></tr><tr><td><b>Incomplete scan</b></td><td>No product page could be read, so only the storefront was scored.</td></tr></tbody></table>
 <h2 class="sec-h">"Couldn't tell" and "Not tested"</h2>
-<p>When the evidence is thin, for example a page built by scripts that the scanner cannot run, Verta says it couldn't tell instead of failing the check. Those checks are left out of the score. A layer shown as Not tested was not scored, which is different from scoring zero.</p>
+<p>When the evidence is thin, for example a page built by scripts that the scanner cannot run, Verta says it couldn't tell instead of failing the check. Those checks are left out of the score. An area shown as Not tested was not scored, which is different from scoring zero. Optional extras such as an llms.txt file are shown for information and are not scored.</p>
 <h2 class="sec-h">What Verta does not test</h2>
-<ul><li>Checkout, payment and anything behind a login.</li><li>Pages built only by scripts the scanner cannot run.</li><li>How any particular AI assistant behaves today. Verta measures how readable and operable a store is, not a prediction.</li></ul>
-<p>The score is a working framework, not a certification.</p>
-<h2 class="sec-h">Beyond the free scan</h2>
-<p>The free check reads pages. The full agent audit goes further: an AI agent runs real shopping missions on the store (find a product, read the price and stock, add to cart, reach checkout) and the report includes screenshots as evidence. Payment tests run only on stores that have agreed to them.</p>
-<p><a class="btn" href="/#contact">Get a free store check</a></p>
+<ul><li>Checkout, payment and anything behind a login.</li><li>Pages built only by scripts the scanner cannot run.</li><li>Your actual ranking, traffic or sales. The score measures how complete and readable your product data is. It does not predict results.</li></ul>
+<p>The score is our own checklist, not a Google rating or a certification.</p>
+<h2 class="sec-h">Beyond the free check</h2>
+<p>We fix what the check finds: structured product data, price and stock markup, shipping and returns information, for a fixed price agreed before we start. Then we run the same check again and show the before and after. For stores that want extra proof, we can also run a shopping test with screenshots. Payment tests only run on stores that have agreed to them in writing.</p>
+<p><a class="btn" href="/#contact">Get a free product data check</a></p>
 </main>
 <div id="foot"></div>
 <script src="/config.js"></script><script src="/app.js"></script><script>MainNavigation('/about','site');Footer('site');</script></body></html>

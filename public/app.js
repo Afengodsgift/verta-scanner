@@ -19,8 +19,8 @@ const STATE_BAND={ready:BANDS.ready,compatible:BANDS.compat,friction:BANDS.fric,
 const Badge=(b,text)=>`<span class="badge t-${b.k}">${icon(b.icon)}${esc(text||b.label)}</span>`;
 const SEV={P0:{k:'blind',label:'Critical',icon:'alert',cls:'p0'},P1:{k:'fric',label:'Important',icon:'alert',cls:'p1'},P2:{k:'compat',label:'Minor',icon:'info',cls:'p2'}};
 const CHK={pass:['ready','Pass','check'],warn:['compat','Needs work','minus'],fail:['blind','Failing','x'],unsure:['inc',"Couldn't tell",'info'],na:['inc','Not applicable','minus'],info:['inc','For your information','info']};
-const SHORT={discover:'Discoverability',semantic:'Meaning',infra:'Product data',inventory:'Stock',pricing:'Price',policies:'Policies',interact:'Pages',transact:'Checkout'};
-const DESC={discover:'Is your store and its products easy to find?',semantic:'Does each product have a clear name and description?',infra:'Is the product data structured so Google can read it?',inventory:'Does the data say what is in stock?',pricing:'Are price and currency in the data?',policies:'Are shipping and returns rules easy to find?',interact:'Do the pages work without a mouse?',transact:'Can a shopper get from product to checkout?'};
+const SHORT={discover:'Findability',semantic:'Descriptions',infra:'Structured data',inventory:'Stock',pricing:'Price',policies:'Shipping, returns',interact:'Pages',transact:'Cart'};
+const DESC={discover:'Is your store and its products easy to find?',semantic:'Does each product have a clear name, description and image?',infra:'Is the product data structured so Google can read it?',inventory:'Does the data say what is in stock?',pricing:'Are price and currency in the data?',policies:'Are shipping and returns rules easy to find?',interact:'Do product pages work as real links and without a mouse?',transact:'Can a shopper get from a product page to a cart?'};
 const lname=l=>SHORT[l.id]||l.name, ldesc=l=>DESC[l.id]||l.question;
 
 /* ---------- theme, nav, footer ---------- */
@@ -42,8 +42,8 @@ function Footer(mode='site'){
 }
 
 /* ---------- messages & text ---------- */
-const CAN=['find your store','understand your descriptions','read your product data','tell what is in stock','read your prices','check your shipping and return rules','use your pages','complete a purchase'];
-const CANT=['find your store','understand your descriptions','read your product data','tell what is in stock','read your prices','check your shipping and return rules','use your pages reliably','complete a purchase'];
+const CAN=['find your store','understand your descriptions','read your product data','tell what is in stock','read your prices','check your shipping and return rules','use your pages','reach a cart'];
+const CANT=['find your store','understand your descriptions','read your product data','tell what is in stock','read your prices','check your shipping and return rules','use your pages reliably','reach a cart'];
 function verdict(r){
   if(r.state.key==='inconclusive')return 'We could read your homepage but not a product page, so this covers the storefront only. Paste a direct product link for a real result.';
   const ls=r.layers.map((l,i)=>({i,s:l.score})).filter(x=>x.s!=null);
@@ -91,7 +91,7 @@ function LayerScoreRow(l){
   <div class="val">${nt?`<span class="nt-label">Not tested</span>`:`<span class="t-${b.k}">${l.score}</span>`}${Badge(b)}</div>
   <div class="track ${nt?'nt':''}" ${nt?'':`role="img" aria-label="${esc(lname(l))}: ${l.score} out of 100, ${b.label}"`}>${nt?'':`<i class="f-${b.k}" data-w="${Math.max(l.score,2)}"></i>`}</div></li>`;
 }
-const LayerScoreChart=r=>`<section class="card" aria-labelledby="layH"><h2 class="card-h" id="layH">Score by layer</h2><ul class="layers" style="margin-top:16px">${r.layers.map(LayerScoreRow).join('')}</ul></section>`;
+const LayerScoreChart=r=>`<section class="card" aria-labelledby="layH"><h2 class="card-h" id="layH">Score by area</h2><ul class="layers" style="margin-top:16px">${r.layers.map(LayerScoreRow).join('')}</ul></section>`;
 function PriorityIssueCard(c){
   const s=SEV[c.sev]||SEV.P2;
   return `<article class="card issue ${s.cls}"><header><span class="badge t-${s.k}">${icon(s.icon)}${s.label}</span><h3 class="card-h">${esc(c.title)}</h3></header>

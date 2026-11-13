@@ -1,6 +1,6 @@
-# Verta Readiness Scanner
+# Verta Product Data Scanner
 
-Paste a store URL, get a readiness score across 8 layers (discoverability, semantic clarity, product infrastructure, inventory, pricing, policies, interaction, transaction readiness), with evidence and a fix for every finding.
+Paste a store URL, get a product data score across 8 areas (findability, product descriptions, structured data, stock, pricing, shipping and returns, page usability, cart and checkout), with evidence and a fix for every finding.
 
 - `lib/analyze.js` pure scoring (no network). `lib/scan.js` crawler. `lib/net.js` SSRF-safe fetch. `api/scan.js` Vercel function. `public/index.html` UI.
 - `npm test` runs offline fixture tests. `npm run dev` serves on :3000 (set `ALLOW_PRIVATE=1` only to scan local fixtures).
